@@ -1,1 +1,0 @@
-# koreatech_safe
