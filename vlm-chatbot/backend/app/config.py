@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     # VLM 서버 설정
     VLM_BASE_URL: str = "http://127.0.0.1:8000/v1"
     VLM_API_KEY: str = "EMPTY"
-    VLM_MODEL: str = "qwen2.5-vl-7b"
+    # vLLM의 /v1/models 에서 확인되는 model id 와 동일해야 함
+    VLM_MODEL: str = "Qwen/Qwen2.5-VL-7B-Instruct"
     VLM_TEMPERATURE: float = 0.2
 
     # API 서버 설정

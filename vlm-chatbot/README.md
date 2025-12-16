@@ -85,6 +85,7 @@ vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
   --tensor-parallel-size 2 \
   --gpu-memory-utilization 0.9 \
   --max-model-len 4096
+  --skip-mm-profiling
 ```
 
 **vLLM 서버 옵션 설명:**
@@ -233,7 +234,8 @@ function App() {
 
 ```env
 VLM_BASE_URL=http://127.0.0.1:8000/v1
-VLM_MODEL=qwen2.5-vl-7b
+# vLLM의 /v1/models 에서 확인되는 model id 와 동일해야 함
+VLM_MODEL=Qwen/Qwen2.5-VL-7B-Instruct
 API_PORT=8080
 ```
 
@@ -276,6 +278,14 @@ Error: Connection refused
 ```
 
 → vLLM 서버가 http://127.0.0.1:8000에서 실행 중인지 확인
+
+### The model `...` does not exist
+
+→ `VLM_MODEL`이 vLLM에서 서빙 중인 모델명과 다를 때 발생합니다. 아래로 실제 모델 id를 확인해 `VLM_MODEL`을 맞춰주세요.
+
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
 
 ### 백엔드 실행 오류
 
