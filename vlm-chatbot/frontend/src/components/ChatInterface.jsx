@@ -4,10 +4,12 @@ import ImageUpload from './ImageUpload'
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
 
+const MAX_IMAGES = 5  // 최대 이미지 개수
+
 function ChatInterface() {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
-  const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedImages, setSelectedImages] = useState([])  // 배열로 변경
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
@@ -20,14 +22,14 @@ function ChatInterface() {
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() && !selectedImage) {
+    if (!inputMessage.trim() && selectedImages.length === 0) {
       return
     }
 
     const userMessage = {
       role: 'user',
       content: inputMessage,
-      image: selectedImage?.preview,
+      images: selectedImages.map(img => img.preview),  // 배열로 변경
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -41,9 +43,14 @@ function ChatInterface() {
         content: msg.content,
       }))
 
+      // 이미지 배열 전송 (없으면 null)
+      const imagesBase64 = selectedImages.length > 0 
+        ? selectedImages.map(img => img.base64) 
+        : null
+
       const response = await chatAPI.sendMessage(
         inputMessage,
-        selectedImage?.base64,
+        imagesBase64,
         history
       )
 
@@ -53,7 +60,7 @@ function ChatInterface() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-      setSelectedImage(null)
+      setSelectedImages([])  // 배열 초기화
     } catch (error) {
       console.error('메시지 전송 실패:', error)
       const errorMessage = {
@@ -73,9 +80,15 @@ function ChatInterface() {
     }
   }
 
-  // 이미지 파일 처리 핸들러 (ImageUpload.jsx의 검증 로직 재사용)
+  // 이미지 파일 처리 핸들러 (다중 이미지 지원)
   const processImageFile = (file) => {
     if (!file) return
+
+    // 최대 이미지 개수 체크
+    if (selectedImages.length >= MAX_IMAGES) {
+      alert(`이미지는 최대 ${MAX_IMAGES}개까지 업로드 가능합니다.`)
+      return
+    }
 
     // 파일 크기 체크 (10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -93,13 +106,18 @@ function ChatInterface() {
     // 파일을 base64로 변환
     const reader = new FileReader()
     reader.onloadend = () => {
-      setSelectedImage({
+      setSelectedImages(prev => [...prev, {  // 배열에 추가
         file,
         base64: reader.result,
         preview: reader.result,
-      })
+      }])
     }
     reader.readAsDataURL(file)
+  }
+
+  // 이미지 삭제 핸들러
+  const handleRemoveImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index))
   }
 
   // 클립보드 붙여넣기 핸들러 (Ctrl+V)
@@ -146,12 +164,17 @@ function ChatInterface() {
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.role}`}>
             <div className="message-content">
-              {msg.image && (
-                <img
-                  src={msg.image}
-                  alt="uploaded"
-                  className="message-image"
-                />
+              {msg.images && msg.images.length > 0 && (
+                <div className="message-images">
+                  {msg.images.map((imgSrc, imgIndex) => (
+                    <img
+                      key={imgIndex}
+                      src={imgSrc}
+                      alt={`uploaded-${imgIndex}`}
+                      className="message-image"
+                    />
+                  ))}
+                </div>
               )}
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -183,8 +206,9 @@ function ChatInterface() {
         className="chat-input-container"
       >
         <ImageUpload
-          selectedImage={selectedImage}
-          onImageSelect={setSelectedImage}
+          selectedImages={selectedImages}
+          onRemoveImage={handleRemoveImage}
+          maxImages={MAX_IMAGES}
         />
 
         <div className="input-row">
@@ -200,7 +224,7 @@ function ChatInterface() {
           />
           <button
             onClick={handleSendMessage}
-            disabled={isLoading || (!inputMessage.trim() && !selectedImage)}
+            disabled={isLoading || (!inputMessage.trim() && selectedImages.length === 0)}
             className="send-button"
           >
             {isLoading ? '전송 중...' : '보내기'}

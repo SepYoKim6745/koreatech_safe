@@ -51,33 +51,34 @@ class VLMService:
     def create_message_content(
         self,
         text: Optional[str] = None,
-        image_base64: Optional[str] = None
+        images_base64: Optional[List[str]] = None
     ) -> List[dict]:
-        """메시지 컨텐츠 생성"""
+        """메시지 컨텐츠 생성 (다중 이미지 지원)"""
         contents = []
 
         if text:
             contents.append({"type": "text", "text": text})
 
-        if image_base64:
-            # base64 문자열이 data URL 형식인지 확인
-            if not image_base64.startswith("data:"):
-                image_base64 = f"data:image/jpeg;base64,{image_base64}"
+        if images_base64:
+            for image_base64 in images_base64:
+                # base64 문자열이 data URL 형식인지 확인
+                if not image_base64.startswith("data:"):
+                    image_base64 = f"data:image/jpeg;base64,{image_base64}"
 
-            contents.append({
-                "type": "image_url",
-                "image_url": {"url": image_base64}
-            })
+                contents.append({
+                    "type": "image_url",
+                    "image_url": {"url": image_base64}
+                })
 
         return contents
 
     def build_messages(
         self,
         current_message: str,
-        image_base64: Optional[str] = None,
+        images_base64: Optional[List[str]] = None,
         history: List[dict] = None
     ) -> List[dict]:
-        """채팅 메시지 리스트 생성"""
+        """채팅 메시지 리스트 생성 (다중 이미지 지원)"""
         messages = []
 
         # 히스토리 추가
@@ -98,7 +99,7 @@ class VLMService:
                     })
 
         # 현재 메시지 추가
-        current_content = self.create_message_content(current_message, image_base64)
+        current_content = self.create_message_content(current_message, images_base64)
         messages.append({
             "role": "user",
             "content": current_content
@@ -109,12 +110,12 @@ class VLMService:
     async def chat(
         self,
         message: str,
-        image_base64: Optional[str] = None,
+        images_base64: Optional[List[str]] = None,
         history: List[dict] = None
     ) -> str:
-        """채팅 응답 생성"""
+        """채팅 응답 생성 (다중 이미지 지원)"""
         self._ensure_model_available()
-        messages = self.build_messages(message, image_base64, history)
+        messages = self.build_messages(message, images_base64, history)
 
         try:
             response = self.client.chat.completions.create(
