@@ -1,4 +1,4 @@
-d# VLM Chatbot
+# VLM Chatbot
 
 Qwen2.5-VL 기반 멀티모달 챗봇 - 프론트엔드/백엔드 분리 구조
 
