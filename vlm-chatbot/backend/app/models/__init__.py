@@ -23,7 +23,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     """채팅 요청 모델"""
     message: str
-    image: Optional[str] = None  # base64 인코딩된 이미지
+    images: Optional[List[str]] = None  # base64 인코딩된 이미지 배열
     history: List[dict] = Field(default_factory=list)
 
 

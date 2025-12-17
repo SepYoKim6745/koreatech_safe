@@ -15,13 +15,13 @@ async def send_message(request: ChatRequest):
     채팅 메시지 전송
 
     - **message**: 사용자 메시지 (텍스트)
-    - **image**: base64 인코딩된 이미지 (선택사항)
+    - **images**: base64 인코딩된 이미지 배열 (선택사항)
     - **history**: 대화 히스토리 (선택사항)
     """
     try:
         response = await vlm_service.chat(
             message=request.message,
-            image_base64=request.image,
+            images_base64=request.images,
             history=request.history
         )
 
