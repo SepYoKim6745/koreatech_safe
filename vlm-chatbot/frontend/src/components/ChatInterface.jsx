@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { chatAPI } from '../api/client'
 import ImageUpload from './ImageUpload'
+import ReactMarkdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
 
 function ChatInterface() {
   const [messages, setMessages] = useState([])
@@ -91,11 +93,19 @@ function ChatInterface() {
                   className="message-image"
                 />
               )}
-              <p>{msg.content}</p>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({node, inline, className, children, ...props}) {
+                    return <code className={className} {...props}>{children}</code>
+                  },
+                }}
+              > 
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
-
         {isLoading && (
           <div className="message assistant">
             <div className="message-content loading">
