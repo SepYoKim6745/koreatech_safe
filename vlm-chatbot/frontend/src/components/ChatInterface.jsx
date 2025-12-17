@@ -73,8 +73,68 @@ function ChatInterface() {
     }
   }
 
+  // 이미지 파일 처리 핸들러 (ImageUpload.jsx의 검증 로직 재사용)
+  const processImageFile = (file) => {
+    if (!file) return
+
+    // 파일 크기 체크 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB를 초과할 수 없습니다.')
+      return
+    }
+
+    // 파일 형식 체크
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      alert('지원하지 않는 파일 형식입니다. (jpg, png, gif, webp만 가능)')
+      return
+    }
+
+    // 파일을 base64로 변환
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setSelectedImage({
+        file,
+        base64: reader.result,
+        preview: reader.result,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // 클립보드 붙여넣기 핸들러 (Ctrl+V)
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (let item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        processImageFile(file)
+        break
+      }
+    }
+  }
+
+  // 드래그 오버 핸들러 (드롭을 허용하기 위해 필수)
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  // 드래그 앤 드롭 핸들러
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer.files[0]
+    if (file?.type.startsWith('image/')) {
+      processImageFile(file)
+    }
+  }
+
   return (
-    <div className="chat-interface">
+    <div className="chat-interface" onDrop={handleDrop} onDragOver={handleDragOver}>
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="empty-state">
@@ -119,7 +179,9 @@ function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-container">
+      <div 
+        className="chat-input-container"
+      >
         <ImageUpload
           selectedImage={selectedImage}
           onImageSelect={setSelectedImage}
@@ -130,6 +192,7 @@ function ChatInterface() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
+            onPaste={handlePaste}
             placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
             className="chat-input"
             rows="3"
