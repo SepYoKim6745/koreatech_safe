@@ -13,13 +13,13 @@ export const chatAPI = {
   /**
    * 채팅 메시지 전송
    * @param {string} message - 사용자 메시지
-   * @param {string|null} image - base64 인코딩된 이미지
+   * @param {Array|null} images - base64 인코딩된 이미지 배열
    * @param {Array} history - 대화 히스토리
    */
-  async sendMessage(message, image = null, history = []) {
+  async sendMessage(message, images = null, history = []) {
     const response = await apiClient.post('/api/chat/message', {
       message,
-      image,
+      images,
       history,
     })
     return response.data
