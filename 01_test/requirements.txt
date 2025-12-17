@@ -1,8 +1,0 @@
-# Qwen2.5-VL 모델 실행을 위한 필수 패키지
-transformers>=4.40.0
-torch>=2.0.0
-accelerate>=0.20.0
-qwen-vl-utils
-pillow
-numpy
-
