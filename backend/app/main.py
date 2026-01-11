@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import chat
 from app.config import settings
+from app.core.database import engine, Base
+
+# DB 테이블 생성 (앱 시작 시)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.API_TITLE,

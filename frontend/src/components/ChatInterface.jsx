@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 
 const MAX_IMAGES = 5  // 최대 이미지 개수
 
-function ChatInterface() {
+function ChatInterface({ sessionId, onSessionCreated }) {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [selectedImages, setSelectedImages] = useState([])  // 배열로 변경
@@ -16,6 +16,34 @@ function ChatInterface() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  // sessionId가 변경되면 해당 세션의 메시지를 불러옴
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!sessionId) {
+        setMessages([]); // 새 채팅이면 초기화
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const history = await chatAPI.getSessionMessages(sessionId);
+        // 서버 응답 형식을 UI 메시지 형식으로 변환
+        const formattedMessages = history.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          images: msg.image_url ? [msg.image_url] : [] // 이미지가 있다면 (현재는 1개만 가정)
+        }));
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error("메시지 로딩 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSession();
+  }, [sessionId]);
 
   useEffect(() => {
     scrollToBottom()
@@ -37,22 +65,23 @@ function ChatInterface() {
     setIsLoading(true)
 
     try {
-      // 히스토리 구성
-      const history = messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }))
-
       // 이미지 배열 전송 (없으면 null)
       const imagesBase64 = selectedImages.length > 0 
         ? selectedImages.map(img => img.base64) 
         : null
 
+      // API 호출 (sessionId 전달)
       const response = await chatAPI.sendMessage(
         inputMessage,
         imagesBase64,
-        history
+        [], // 히스토리는 이제 서버에서 관리하므로 빈 배열 전송 (혹은 필요시 클라이언트 state 전송)
+        sessionId
       )
+
+      // 새 세션이 생성되었다면 부모에게 알림
+      if (response.session_id && response.session_id !== sessionId) {
+        onSessionCreated(response.session_id);
+      }
 
       const assistantMessage = {
         role: 'assistant',

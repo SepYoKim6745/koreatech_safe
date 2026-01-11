@@ -35,7 +35,7 @@ start_vllm() {
 start_backend() {
     echo -e "${BLUE}[2/3] 백엔드 서버 시작 중...${NC}"
     cd "$PROJECT_DIR/backend"
-    nohup python -m app.main > "$LOG_DIR/backend.log" 2>&1 &
+    nohup uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload > "$LOG_DIR/backend.log" 2>&1 &
     echo $! > "$PID_DIR/backend.pid"
     echo -e "${GREEN}✓ 백엔드 서버 시작됨 (PID: $!)${NC}"
     cd "$PROJECT_DIR"

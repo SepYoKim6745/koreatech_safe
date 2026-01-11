@@ -15,8 +15,320 @@ body {
 
 .app {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 260px;
+  background-color: #202123;
+  color: #ececf1;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar.closed {
+  width: 0;
+  padding: 0;
+  border: none;
+}
+
+.sidebar-top-row {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 32px;
+  width: auto;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.sidebar-toggle-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header {
+  padding: 0 10px 10px 10px;
+  margin-bottom: 10px;
+}
+
+.new-chat-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: transparent;
+  border: 1px solid #4d4d4f;
+  border-radius: 5px;
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background-color 0.2s;
+  font-size: 14px;
+}
+
+.new-chat-btn:hover {
+  background-color: #2b2c2f;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px;
+  /* 스크롤바 숨기기 (선택사항) */
+  scrollbar-width: none; 
+}
+
+.sidebar-content::-webkit-scrollbar {
+  display: none;
+}
+
+.history-section {
+  margin-bottom: 20px;
+}
+
+.history-label {
+  font-size: 12px;
+  color: #8e8ea0;
+  margin-bottom: 10px;
+  padding-left: 10px;
+  font-weight: 500;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.sidebar.closed .history-label {
+  opacity: 0;
+}
+
+.history-list {
+  list-style: none;
+}
+
+.history-item {
+  padding: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ececf1;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.history-item:hover {
+  background-color: #2b2c2f;
+}
+
+.history-item.active {
+  background-color: #343541;
+  color: white;
+}
+
+.chat-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.options-btn {
+  background: transparent;
+  border: none;
+  color: #8e8ea0;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.history-item:hover .options-btn,
+.history-item.active .options-btn,
+.options-btn.visible {
+  opacity: 1;
+}
+
+.options-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.options-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #202123;
+  border: 1px solid #4d4d4f;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  min-width: 120px;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.options-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #ececf1;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.options-dropdown button:hover {
+  background-color: #343541;
+}
+
+.options-dropdown button.delete-option {
+  color: #ff4d4d;
+}
+
+.options-dropdown button.delete-option:hover {
+  background-color: rgba(255, 77, 77, 0.1);
+}
+
+.rename-form {
+  flex: 1;
+  margin-right: 8px;
+}
+
+.rename-input {
+  width: 100%;
+  background-color: #40414f;
+  border: 1px solid #565869;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+}
+
+.rename-input:focus {
+  border-color: #667eea;
+}
+
+.sidebar-footer {
+  padding: 15px;
+  border-top: 1px solid #4d4d4f;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.user-profile:hover {
+  background-color: #2b2c2f;
+}
+
+/* Main Content Wrapper */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background-color: #f5f5f5;
+  min-width: 0;
+}
+
+/* Header Adjustments */
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.menu-button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-title {
+  flex: 1;
+  text-align: center;
+  /* 버튼 유무에 상관없이 최대한 중앙에 위치하도록 여백 제거 */
+  margin: 0;
+}
+
+.app-header h1 {
+  margin-bottom: 4px;
+  font-size: 24px;
+}
+
+.app-header p {
+  opacity: 0.9;
+  font-size: 13px;
+  margin: 0;
 }
 
 .app-header {
