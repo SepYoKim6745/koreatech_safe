@@ -62,3 +62,18 @@ Thumbs.db
 
 logs/
 pids/
+
+# assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.mp3
+*.wav
+*.avi
+*.mov
+*.flv
+*.mkv
