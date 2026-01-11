@@ -39,12 +39,22 @@ function App() {
         <header className="app-header">
           {!isSidebarOpen && (
             <button className="menu-button" onClick={toggleSidebar} aria-label="메뉴 열기">
-              ☰
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
             </button>
           )}
-          <div className="header-title">
-            <h1>멀티모달 챗봇 (Qwen2.5-VL)</h1>
-            <p>이미지와 텍스트를 함께 입력하여 대화할 수 있습니다</p>
+          <div className="header-branding" onClick={handleNewChat} style={{cursor: 'pointer'}}>
+            <img 
+                src="/assets/kut_logo.gif" 
+                onError={(e) => {e.target.src = 'https://placehold.co/140x40/FF7F00/ffffff?text=SafeChat';}} 
+                alt="SafeChat AI" 
+                className="header-logo" 
+            />
+            <span className="header-divider">|</span>
+            <span className="header-subtitle">Safety Management Assistant</span>
           </div>
         </header>
         <main className="app-main">

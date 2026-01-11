@@ -3,6 +3,8 @@ import { chatAPI } from '../api/client'
 import ImageUpload from './ImageUpload'
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const MAX_IMAGES = 5  // 최대 이미지 개수
 
@@ -192,7 +194,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
 
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.role}`}>
-            <div className="message-content">
+            <div className={`message-content ${msg.role === 'assistant' ? 'markdown-body' : ''}`}>
               {msg.images && msg.images.length > 0 && (
                 <div className="message-images">
                   {msg.images.map((imgSrc, imgIndex) => (
@@ -209,8 +211,26 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                 remarkPlugins={[remarkGfm]}
                 components={{
                   code({node, inline, className, children, ...props}) {
-                    return <code className={className} {...props}>{children}</code>
+                    const match = /language-(\w+)/.exec(className || '')
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        {...props}
+                        style={vscDarkPlus}
+                        language={match[1]}
+                        PreTag="div"
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    )
                   },
+                  // 테이블 스타일링을 위한 커스텀 컴포넌트 추가 가능
+                  table({children}) {
+                    return <table className="chat-table">{children}</table>
+                  }
                 }}
               > 
                 {msg.content}
@@ -220,10 +240,19 @@ function ChatInterface({ sessionId, onSessionCreated }) {
         ))}
         {isLoading && (
           <div className="message assistant">
-            <div className="message-content loading">
-              <span className="dot">.</span>
-              <span className="dot">.</span>
-              <span className="dot">.</span>
+            <div className="thinking-container">
+              {/* 생각중 이미지 (추후 교체 예정) */}
+              <img 
+                src="https://placehold.co/150x150/png?text=Thinking..." 
+                alt="Thinking" 
+                className="thinking-image"
+              />
+              <div className="thinking-text">
+                <span>생각중</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </div>
             </div>
           </div>
         )}

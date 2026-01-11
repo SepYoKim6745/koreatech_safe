@@ -94,10 +94,10 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
   return (
     <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-top-row">
-        <div className="sidebar-logo">
-          {/* 추후 로고 이미지로 교체 예정 */}
+        <div className="sidebar-logo" onClick={onNewChat} style={{cursor: 'pointer'}}>
           <img 
-            src="https://placehold.co/120x40/333/FFF?text=SafeChat" 
+            src="/assets/kut_logo.gif" 
+            onError={(e) => {e.target.src = 'https://placehold.co/120x40/183072/ffffff?text=SafeChat';}} 
             alt="App Logo" 
             className="logo-img"
           />
