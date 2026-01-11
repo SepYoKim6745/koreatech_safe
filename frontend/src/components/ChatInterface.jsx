@@ -243,7 +243,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
             <div className="thinking-container">
               {/* 생각중 이미지 (추후 교체 예정) */}
               <img 
-                src="https://placehold.co/150x150/png?text=Thinking..." 
+                src="../public/assets/thinking.gif" 
                 alt="Thinking" 
                 className="thinking-image"
               />

@@ -37,16 +37,12 @@ function App() {
       />
       <div className="main-content">
         <header className="app-header">
-          {!isSidebarOpen && (
-            <button className="menu-button" onClick={toggleSidebar} aria-label="메뉴 열기">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-          )}
-          <div className="header-branding" onClick={handleNewChat} style={{cursor: 'pointer'}}>
+          <div 
+            className="header-branding" 
+            onClick={toggleSidebar} 
+            style={{cursor: 'pointer'}}
+            title={isSidebarOpen ? "메뉴 닫기" : "메뉴 열기"}
+          >
             <img 
                 src="/assets/kut_logo.gif" 
                 onError={(e) => {e.target.src = 'https://placehold.co/140x40/FF7F00/ffffff?text=SafeChat';}} 

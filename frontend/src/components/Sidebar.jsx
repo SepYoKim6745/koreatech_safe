@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { chatAPI } from '../api/client';
+import Modal from './Modal';
 
 const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSidebar }) => {
   const [sessions, setSessions] = useState([]);
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [newTitle, setNewTitle] = useState("");
   const [openMenuSessionId, setOpenMenuSessionId] = useState(null); // 현재 열린 메뉴 ID
+  
+  // 모달 상태
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
 
   // 채팅방 목록 불러오기
   const fetchSessions = async () => {
@@ -62,28 +67,34 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
     }
   };
 
-  // 채팅방 삭제
-  const handleDeleteSession = async (e, sessionId) => {
+  // 채팅방 삭제 버튼 클릭 (모달 열기)
+  const handleDeleteClick = (e, sessionId) => {
     e.stopPropagation();
     setOpenMenuSessionId(null); // 메뉴 닫기
-    
-    if (!window.confirm("이 채팅방을 삭제하시겠습니까?")) {
-      return;
-    }
+    setSessionToDelete(sessionId);
+    setIsDeleteModalOpen(true);
+  };
+
+  // 실제 삭제 수행
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
 
     try {
-      await chatAPI.deleteSession(sessionId);
+      await chatAPI.deleteSession(sessionToDelete);
       
       // 목록에서 제거
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      setSessions(prev => prev.filter(s => s.id !== sessionToDelete));
       
       // 현재 열려있는 채팅방이면 초기화
-      if (currentSessionId === sessionId) {
+      if (currentSessionId === sessionToDelete) {
         onNewChat();
       }
     } catch (error) {
       console.error("채팅방 삭제 실패:", error);
       alert("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setSessionToDelete(null);
     }
   };
 
@@ -92,11 +103,12 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
   }, [currentSessionId]);
 
   return (
+    <>
     <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-top-row">
         <div className="sidebar-logo" onClick={onNewChat} style={{cursor: 'pointer'}}>
           <img 
-            src="/assets/kut_logo.gif" 
+            src="/assets/logo_kor_v2.png" 
             onError={(e) => {e.target.src = 'https://placehold.co/120x40/183072/ffffff?text=SafeChat';}} 
             alt="App Logo" 
             className="logo-img"
@@ -156,7 +168,7 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
                             <button onClick={(e) => handleEditStart(e, session)}>
                                 ✏️ 이름 변경
                             </button>
-                            <button onClick={(e) => handleDeleteSession(e, session.id)} className="delete-option">
+                            <button onClick={(e) => handleDeleteClick(e, session.id)} className="delete-option">
                                 🗑️ 삭제
                             </button>
                         </div>
@@ -175,6 +187,18 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
         </div>
       </div>
     </aside>
+
+    <Modal
+        isOpen={isDeleteModalOpen}
+        title="채팅방 삭제"
+        message={"이 채팅방을 삭제하시겠습니까?\n삭제된 대화는 복구할 수 없습니다."}
+        confirmText="삭제"
+        cancelText="취소"
+        isDanger={true}
+        onConfirm={confirmDeleteSession}
+        onCancel={() => setIsDeleteModalOpen(false)}
+    />
+    </>
   );
 };
 

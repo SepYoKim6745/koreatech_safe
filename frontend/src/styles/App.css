@@ -65,20 +65,23 @@ body {
 }
 
 .sidebar-top-row {
-  padding: 20px;
+  height: 64px; /* 높이 통일 */
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   cursor: pointer;
+  height: 100%;
 }
 
 .logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
   object-fit: contain;
 }
@@ -89,9 +92,12 @@ body {
   color: var(--text-secondary);
   font-size: 20px;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
   border-radius: var(--radius-sm);
   transition: color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-toggle-btn:hover {
@@ -299,7 +305,7 @@ body {
   align-items: center;
   gap: 16px;
   border-bottom: 1px solid var(--border-color);
-  height: 60px;
+  height: 64px; /* 높이 통일 */
   flex-shrink: 0;
   z-index: 10;
 }
@@ -712,4 +718,98 @@ body {
 }
 .chat-messages::-webkit-scrollbar-track {
   background-color: transparent;
+}
+
+/* --- Modal Styles (Apple Style) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeInOverlay 0.2s ease-out;
+}
+
+.modal-content {
+  background-color: white;
+  width: 320px;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  transform: scale(0.95);
+  animation: scaleInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  text-align: center;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.modal-message {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 24px;
+  white-space: pre-wrap; /* 줄바꿈 허용 */
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-btn.cancel {
+  background-color: #F5F5F7;
+  color: var(--text-primary);
+}
+
+.modal-btn.cancel:hover {
+  background-color: #E8E8ED;
+}
+
+.modal-btn.confirm {
+  background-color: var(--color-blue);
+  color: white;
+}
+
+.modal-btn.confirm:hover {
+  opacity: 0.9;
+}
+
+.modal-btn.confirm.danger {
+  background-color: #FF3B30; /* Apple Red */
+}
+
+.modal-btn.confirm.danger:hover {
+  background-color: #FF2D20;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleInModal {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
