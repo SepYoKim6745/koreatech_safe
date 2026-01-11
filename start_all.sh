@@ -20,9 +20,10 @@ mkdir -p "$LOG_DIR" "$PID_DIR"
 # 서비스 시작 함수
 start_vllm() {
     echo -e "${BLUE}[1/3] vLLM 서버 시작 중...${NC}"
-    nohup vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
+    # nohup vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
+    nohup vllm serve Qwen/Qwen3-VL-8B-Instruct \
         --port 8000 \
-        --tensor-parallel-size 2 \
+        --tensor-parallel-size 1 \
         --gpu-memory-utilization 0.9 \
         --max-model-len 4096 \
         --skip-mm-profiling \
