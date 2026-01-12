@@ -20,13 +20,15 @@ mkdir -p "$LOG_DIR" "$PID_DIR"
 # 서비스 시작 함수
 start_vllm() {
     echo -e "${BLUE}[1/3] vLLM 서버 시작 중...${NC}"
+    export NCCL_TIMEOUT=3600
     # nohup vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
     nohup vllm serve Qwen/Qwen3-VL-8B-Instruct \
         --port 8000 \
-        --tensor-parallel-size 1 \
+        --tensor-parallel-size 2 \
         --gpu-memory-utilization 0.9 \
-        --max-model-len 4096 \
+        --max-model-len 32768 \
         --skip-mm-profiling \
+        --disable-custom-all-reduce \
         > "$LOG_DIR/vllm.log" 2>&1 &
     echo $! > "$PID_DIR/vllm.pid"
     echo -e "${GREEN}✓ vLLM 서버 시작됨 (PID: $!)${NC}"
@@ -35,7 +37,7 @@ start_vllm() {
 start_backend() {
     echo -e "${BLUE}[2/3] 백엔드 서버 시작 중...${NC}"
     cd "$PROJECT_DIR/backend"
-    nohup uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload > "$LOG_DIR/backend.log" 2>&1 &
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload > "$LOG_DIR/backend.log" 2>&1 &
     echo $! > "$PID_DIR/backend.pid"
     echo -e "${GREEN}✓ 백엔드 서버 시작됨 (PID: $!)${NC}"
     cd "$PROJECT_DIR"

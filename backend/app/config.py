@@ -13,13 +13,13 @@ class Settings(BaseSettings):
     VLM_TEMPERATURE: float = 0.2
 
     # API 서버 설정
-    API_HOST: str = "127.0.0.1"
+    API_HOST: str = "0.0.0.0"
     API_PORT: int = 8080
     API_TITLE: str = "VLM Chatbot API"
     API_VERSION: str = "1.0.0"
 
     # CORS 설정
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
 
     # 파일 업로드 설정
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
