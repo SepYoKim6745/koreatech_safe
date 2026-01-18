@@ -1,4 +1,7 @@
 import logging
+import base64
+import io
+import pypdf
 from openai import OpenAI, NotFoundError
 from typing import List, Optional
 from app.config import settings
@@ -47,6 +50,36 @@ class VLMService:
             f"현재 설정: '{self.model}', 사용 가능: {available}. "
             "vLLM의 /v1/models 결과의 id로 VLM_MODEL을 맞추거나, vLLM 실행 시 --served-model-name을 사용하세요."
         )
+
+    def extract_text_from_pdf(self, pdf_base64: str) -> str:
+        """PDF Base64 문자열에서 텍스트 추출"""
+        try:
+            # Data URL 헤더 제거 (data:application/pdf;base64,...)
+            if "," in pdf_base64:
+                _, encoded = pdf_base64.split(",", 1)
+            else:
+                encoded = pdf_base64
+            
+            pdf_bytes = base64.b64decode(encoded)
+            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+            text = ""
+            # 최대 텍스트 길이 제한 (약 10,000 토큰 정도 확보를 위해 30,000자 제한)
+            MAX_CHARS = 30000 
+            
+            for i, page in enumerate(reader.pages):
+                page_text = page.extract_text()
+                if page_text:
+                    text += f"--- Page {i+1} ---\n{page_text}\n"
+                
+                if len(text) > MAX_CHARS:
+                    text = text[:MAX_CHARS]
+                    text += f"\n\n[시스템 알림: 문서 내용이 너무 길어 앞부분 {MAX_CHARS}자만 포함되었습니다.]"
+                    break
+                    
+            return text
+        except Exception as e:
+            self.logger.error(f"PDF extraction failed: {e}")
+            return f"[PDF 변환 오류: {str(e)}]"
 
     def create_message_content(
         self,
@@ -107,15 +140,78 @@ class VLMService:
 
         return messages
 
+    async def stream_chat(
+        self,
+        message: str,
+        images_base64: Optional[List[str]] = None,
+        documents: Optional[List[str]] = None,
+        history: List[dict] = None
+    ):
+        """채팅 응답 스트리밍 생성"""
+        self._ensure_model_available()
+
+        # 문서 처리
+        full_message = message
+        if documents:
+            doc_texts = []
+            for doc in documents:
+                text = self.extract_text_from_pdf(doc)
+                doc_texts.append(text)
+            
+            if doc_texts:
+                full_message = f"다음은 사용자가 업로드한 문서(PDF)의 내용입니다:\n\n" + "\n".join(doc_texts) + f"\n\n질문: {message}"
+
+        messages = self.build_messages(full_message, images_base64, history)
+
+        try:
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                stream=True
+            )
+            
+            for chunk in stream:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+
+        except NotFoundError as e:
+            self._model_verified = False
+            available = []
+            try:
+                available = self._get_available_model_ids()
+            except Exception:
+                pass
+            raise ValueError(
+                "요청한 모델이 vLLM에 존재하지 않습니다. "
+                f"현재 설정: '{self.model}', 사용 가능: {available}. "
+            ) from e
+
     async def chat(
         self,
         message: str,
         images_base64: Optional[List[str]] = None,
+        documents: Optional[List[str]] = None,
         history: List[dict] = None
     ) -> str:
-        """채팅 응답 생성 (다중 이미지 지원)"""
+        """채팅 응답 생성 (다중 이미지 및 문서 지원)"""
         self._ensure_model_available()
-        messages = self.build_messages(message, images_base64, history)
+
+        # 문서 처리 (PDF 텍스트 추출)
+        full_message = message
+        if documents:
+            doc_texts = []
+            for doc in documents:
+                # 간단히 PDF라고 가정하거나, 헤더를 보고 판단 가능
+                # 현재는 PDF 텍스트 추출 시도
+                text = self.extract_text_from_pdf(doc)
+                doc_texts.append(text)
+            
+            if doc_texts:
+                full_message = f"다음은 사용자가 업로드한 문서(PDF)의 내용입니다:\n\n" + "\n".join(doc_texts) + f"\n\n질문: {message}"
+
+        messages = self.build_messages(full_message, images_base64, history)
 
         try:
             response = self.client.chat.completions.create(
@@ -137,6 +233,7 @@ class VLMService:
             ) from e
 
         return response.choices[0].message.content
+
 
 
 # 싱글톤 인스턴스

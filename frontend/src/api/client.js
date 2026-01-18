@@ -17,14 +17,67 @@ export const chatAPI = {
    * @param {Array} history - 대화 히스토리 (클라이언트 측 히스토리, 선택적 사용)
    * @param {number|null} sessionId - 채팅방 ID (없으면 새 채팅방 생성)
    */
-  async sendMessage(message, images = null, history = [], sessionId = null) {
+  async sendMessage(message, images = [], documents = [], fileNames = [], history = [], sessionId = null) {
     const response = await apiClient.post('/api/chat/message', {
       message,
-      images,
+      images: images || [],
+      documents: documents || [],
+      file_names: fileNames || [],
       history,
       session_id: sessionId
     })
     return response.data
+  },
+
+  /**
+   * 채팅 메시지 스트리밍 전송
+   */
+  async streamMessage(message, images = [], documents = [], fileNames = [], history = [], sessionId = null, onChunk, onSessionId) {
+    const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        images: images || [],
+        documents: documents || [],
+        file_names: fileNames || [],
+        history,
+        session_id: sessionId
+      })
+    });
+
+    if (!response.body) return;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep the last incomplete line
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          if (data.type === 'token') {
+            onChunk(data.content);
+          } else if (data.type === 'session_id') {
+            if (onSessionId) onSessionId(data.id);
+          } else if (data.type === 'error') {
+              console.error("Stream error:", data.content);
+              throw new Error(data.content);
+          }
+        } catch (e) {
+          console.error('Error parsing JSON:', e);
+        }
+      }
+    }
   },
 
   /**

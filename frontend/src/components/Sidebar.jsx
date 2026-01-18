@@ -10,7 +10,9 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
   
   // 모달 상태
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [imgError, setImgError] = useState(false);
 
   // 채팅방 목록 불러오기
   const fetchSessions = async () => {
@@ -135,8 +137,6 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
                 className={`history-item ${currentSessionId === session.id ? 'active' : ''}`}
                 onClick={() => onSelectChat(session.id)}
               >
-                <span className="chat-icon">💬</span>
-                
                 {editingSessionId === session.id ? (
                   <form onSubmit={handleRenameSession} className="rename-form" onClick={e => e.stopPropagation()}>
                     <input
@@ -181,8 +181,17 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
       </div>
 
       <div className="sidebar-footer">
-        <div className="user-profile">
-          <div className="user-avatar">👤</div>
+        <div className="user-profile" onClick={() => setIsProfileModalOpen(true)}>
+          {!imgError ? (
+            <img 
+              src="/assets/profile.png" 
+              onError={() => setImgError(true)} 
+              alt="User" 
+              className="user-avatar-img"
+            />
+          ) : (
+            <span className="user-avatar-placeholder">👤</span>
+          )}
           <span className="user-name">사용자</span>
         </div>
       </div>
@@ -197,6 +206,16 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
         isDanger={true}
         onConfirm={confirmDeleteSession}
         onCancel={() => setIsDeleteModalOpen(false)}
+    />
+
+    <Modal
+        isOpen={isProfileModalOpen}
+        title="알림"
+        message="추후 개발 예정입니다."
+        confirmText="확인"
+        showCancel={false}
+        onConfirm={() => setIsProfileModalOpen(false)}
+        onCancel={() => setIsProfileModalOpen(false)}
     />
     </>
   );

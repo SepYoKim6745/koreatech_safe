@@ -8,6 +8,8 @@ class ChatRequest(BaseModel):
     """채팅 요청 모델"""
     message: str
     images: Optional[List[str]] = None  # base64 인코딩된 이미지 배열
+    documents: Optional[List[str]] = None # base64 인코딩된 문서 배열 (PDF 등)
+    file_names: Optional[List[str]] = None # 파일 이름 목록 (images + documents 순서)
     history: List[dict] = Field(default_factory=list)
     session_id: Optional[int] = None # 세션 ID (선택 사항)
 
@@ -16,6 +18,7 @@ class ChatResponse(BaseModel):
     response: str
     model: str
     session_id: Optional[int] = None # 세션 ID 반환
+    files: Optional[List[dict]] = None # 방금 보낸 파일 정보 반환
 
 class ChatSessionCreate(BaseModel):
     """채팅방 생성 요청"""
@@ -40,7 +43,8 @@ class ChatMessageResponse(BaseModel):
     id: int
     role: str
     content: str
-    image_url: Optional[str] = None
+    image_url: Optional[str] = None # 하위 호환성 유지
+    files: Optional[List[dict]] = None # 상세 파일 정보
     created_at: datetime
 
     class Config:

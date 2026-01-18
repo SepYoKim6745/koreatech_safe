@@ -27,6 +27,7 @@ start_vllm() {
         --tensor-parallel-size 2 \
         --gpu-memory-utilization 0.9 \
         --max-model-len 32768 \
+        --kv-cache-dtype fp8 \
         --skip-mm-profiling \
         --disable-custom-all-reduce \
         > "$LOG_DIR/vllm.log" 2>&1 &
