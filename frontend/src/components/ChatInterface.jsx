@@ -12,7 +12,8 @@ function ChatInterface({ sessionId, onSessionCreated }) {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [selectedImages, setSelectedImages] = useState([])  // 파일 배열 (이미지 + PDF)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false) // AI 답변 생성 중
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false) // 대화 내역 불러오는 중
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null) // 스트리밍 취소용 컨트롤러
 
@@ -27,7 +28,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      setIsLoading(false);
+      setIsGenerating(false); // 세션 변경 시 생성 상태 강제 초기화
 
       if (!sessionId) {
         setMessages([]); // 새 채팅이면 초기화
@@ -35,7 +36,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       }
 
       try {
-        setIsLoading(true);
+        setIsHistoryLoading(true);
         const history = await chatAPI.getSessionMessages(sessionId);
         // 서버 응답 형식을 UI 메시지 형식으로 변환
         const formattedMessages = history.map(msg => {
@@ -76,7 +77,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       } catch (error) {
         console.error("메시지 로딩 실패:", error);
       } finally {
-        setIsLoading(false);
+        setIsHistoryLoading(false);
       }
     };
 
@@ -115,7 +116,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
     // 사용자 메시지 추가
     setMessages((prev) => [...prev, userMessage])
     setInputMessage('')
-    setIsLoading(true)
+    setIsGenerating(true)
 
     // 새 요청을 위한 AbortController 생성
     if (abortControllerRef.current) {
@@ -197,7 +198,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       })
     } finally {
       if (!abortController.signal.aborted) {
-        setIsLoading(false)
+        setIsGenerating(false)
         abortControllerRef.current = null;
       }
     }
@@ -448,7 +449,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
             </div>
           </div>
         ))}
-        {isLoading && (
+        {isGenerating && (
           <div className="message assistant">
             <div className="thinking-container">
               {/* 생각중 이미지 */}
@@ -485,17 +486,17 @@ function ChatInterface({ sessionId, onSessionCreated }) {
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             onPaste={handlePaste}
-            placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
+            placeholder={isHistoryLoading ? "대화 내용을 불러오는 중입니다..." : "메시지를 입력하세요... (Shift+Enter로 줄바꿈)"}
             className="chat-input"
             rows="3"
-            disabled={isLoading}
+            disabled={isGenerating || isHistoryLoading}
           />
           <button
             onClick={handleSendMessage}
-            disabled={isLoading || (!inputMessage.trim() && selectedImages.length === 0)}
+            disabled={isGenerating || isHistoryLoading || (!inputMessage.trim() && selectedImages.length === 0)}
             className="send-button"
           >
-            {isLoading ? '전송 중...' : '보내기'}
+            {isGenerating ? '전송 중...' : '보내기'}
           </button>
         </div>
       </div>
