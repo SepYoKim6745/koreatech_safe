@@ -6,6 +6,8 @@
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$PROJECT_DIR/logs"
 PID_DIR="$PROJECT_DIR/pids"
+CONDA_ENV_PATH="/home/safety-management/anaconda3/envs/safety_management"
+export PATH="$CONDA_ENV_PATH/bin:$PATH"
 
 # 색상 정의
 RED='\033[0;31m'
@@ -21,12 +23,14 @@ mkdir -p "$LOG_DIR" "$PID_DIR"
 start_vllm() {
     echo -e "${BLUE}[1/3] vLLM 서버 시작 중...${NC}"
     export NCCL_TIMEOUT=3600
-    # nohup vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
-    nohup vllm serve Qwen/Qwen3-VL-8B-Instruct \
+    VLLM_BIN="/home/safety-management/anaconda3/envs/safety_management/bin/vllm"
+    # nohup $VLLM_BIN serve Qwen/Qwen2.5-VL-7B-Instruct \
+    nohup $VLLM_BIN serve Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 \
         --port 8000 \
         --tensor-parallel-size 2 \
-        --gpu-memory-utilization 0.9 \
-        --max-model-len 32768 \
+        --gpu-memory-utilization 0.8 \
+        --max-model-len 65536 \
+        --trust-remote-code \
         --kv-cache-dtype fp8 \
         --skip-mm-profiling \
         --disable-custom-all-reduce \
@@ -38,7 +42,8 @@ start_vllm() {
 start_backend() {
     echo -e "${BLUE}[2/3] 백엔드 서버 시작 중...${NC}"
     cd "$PROJECT_DIR/backend"
-    nohup uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload > "$LOG_DIR/backend.log" 2>&1 &
+    UVICORN_BIN="/home/safety-management/anaconda3/envs/safety_management/bin/uvicorn"
+    nohup $UVICORN_BIN app.main:app --host 0.0.0.0 --port 8080 --reload > "$LOG_DIR/backend.log" 2>&1 &
     echo $! > "$PID_DIR/backend.pid"
     echo -e "${GREEN}✓ 백엔드 서버 시작됨 (PID: $!)${NC}"
     cd "$PROJECT_DIR"
@@ -173,4 +178,3 @@ case "${1:-start}" in
         exit 1
         ;;
 esac
-

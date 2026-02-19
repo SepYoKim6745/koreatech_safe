@@ -2,8 +2,9 @@ import logging
 import base64
 import io
 import pypdf
-from openai import OpenAI, NotFoundError
+from openai import AsyncOpenAI, NotFoundError
 from typing import List, Optional
+from starlette.concurrency import run_in_threadpool
 from app.config import settings
 
 
@@ -12,23 +13,33 @@ class VLMService:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             base_url=settings.VLM_BASE_URL,
-            api_key=settings.VLM_API_KEY
+            api_key=settings.VLM_API_KEY,
+            timeout=300.0  # 타임아웃 5분으로 확장
         )
         self.model = settings.VLM_MODEL
         self.temperature = settings.VLM_TEMPERATURE
         self._model_verified = False
 
-    def _get_available_model_ids(self) -> List[str]:
-        models = self.client.models.list()
-        return [m.id for m in models.data]
+    async def _get_available_model_ids(self) -> List[str]:
+        try:
+            models = await self.client.models.list()
+            return [m.id for m in models.data]
+        except Exception as e:
+            self.logger.error(f"Failed to fetch models from vLLM: {e}")
+            return []
 
-    def _ensure_model_available(self) -> None:
+    async def _ensure_model_available(self) -> None:
         if self._model_verified:
             return
 
-        available = self._get_available_model_ids()
+        available = await self._get_available_model_ids()
+        if not available:
+            # vLLM 서버 연결 실패 또는 모델 없음
+            self.logger.error("vLLM 서버에 연결할 수 없거나 가용한 모델이 없습니다.")
+            return
+
         if self.model in available:
             self._model_verified = True
             return
@@ -36,8 +47,7 @@ class VLMService:
         if len(available) == 1:
             resolved = available[0]
             self.logger.warning(
-                "VLM_MODEL '%s' not found; falling back to served model '%s'. "
-                "Set VLM_MODEL to match /v1/models, or start vLLM with --served-model-name.",
+                "VLM_MODEL '%s' not found; falling back to served model '%s'.",
                 self.model,
                 resolved,
             )
@@ -45,16 +55,11 @@ class VLMService:
             self._model_verified = True
             return
 
-        raise ValueError(
-            "VLM_MODEL이 vLLM에서 서빙 중인 모델명과 다릅니다. "
-            f"현재 설정: '{self.model}', 사용 가능: {available}. "
-            "vLLM의 /v1/models 결과의 id로 VLM_MODEL을 맞추거나, vLLM 실행 시 --served-model-name을 사용하세요."
-        )
+        self.logger.error(f"VLM_MODEL 설정 오류. 설정: '{self.model}', 사용 가능: {available}")
 
     def extract_text_from_pdf(self, pdf_base64: str) -> str:
         """PDF Base64 문자열에서 텍스트 추출"""
         try:
-            # Data URL 헤더 제거 (data:application/pdf;base64,...)
             if "," in pdf_base64:
                 _, encoded = pdf_base64.split(",", 1)
             else:
@@ -63,8 +68,8 @@ class VLMService:
             pdf_bytes = base64.b64decode(encoded)
             reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
             text = ""
-            # 최대 텍스트 길이 제한 (약 10,000 토큰 정도 확보를 위해 30,000자 제한)
-            MAX_CHARS = 30000 
+            # 최대 텍스트 길이 제한 (64k 컨텍스트 활용을 위해 약 40,000자 제한)
+            MAX_CHARS = 40000 
             
             for i, page in enumerate(reader.pages):
                 page_text = page.extract_text()
@@ -94,7 +99,6 @@ class VLMService:
 
         if images_base64:
             for image_base64 in images_base64:
-                # base64 문자열이 data URL 형식인지 확인
                 if not image_base64.startswith("data:"):
                     image_base64 = f"data:image/jpeg;base64,{image_base64}"
 
@@ -111,10 +115,15 @@ class VLMService:
         images_base64: Optional[List[str]] = None,
         history: List[dict] = None
     ) -> List[dict]:
-        """채팅 메시지 리스트 생성 (다중 이미지 지원)"""
+        """채팅 메시지 리스트 생성 (시스템 프롬프트 주입 및 다중 이미지 지원)"""
         messages = []
 
-        # 히스토리 추가
+        # 1. 시스템 프롬프트 주입 (AI의 역할 및 언어 설정 강제)
+        messages.append({
+            "role": "system",
+            "content": [{"type": "text", "text": settings.SYSTEM_PROMPT}]
+        })
+
         if history:
             for msg in history:
                 role = msg.get("role", "user")
@@ -131,7 +140,6 @@ class VLMService:
                         "content": content
                     })
 
-        # 현재 메시지 추가
         current_content = self.create_message_content(current_message, images_base64)
         messages.append({
             "role": "user",
@@ -148,14 +156,13 @@ class VLMService:
         history: List[dict] = None
     ):
         """채팅 응답 스트리밍 생성"""
-        self._ensure_model_available()
+        await self._ensure_model_available()
 
-        # 문서 처리
         full_message = message
         if documents:
             doc_texts = []
             for doc in documents:
-                text = self.extract_text_from_pdf(doc)
+                text = await run_in_threadpool(self.extract_text_from_pdf, doc)
                 doc_texts.append(text)
             
             if doc_texts:
@@ -164,29 +171,29 @@ class VLMService:
         messages = self.build_messages(full_message, images_base64, history)
 
         try:
-            stream = self.client.chat.completions.create(
+            # 반복 방지 및 품질 향상을 위한 옵션 추가
+            stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                temperature=self.temperature,
+                temperature=settings.VLM_TEMPERATURE,
+                top_p=settings.VLM_TOP_P,
+                extra_body={
+                    "repetition_penalty": settings.VLM_REPETITION_PENALTY,
+                    "stop_token_ids": [151643, 151645]  # Qwen 특유의 종료 토큰 ID (필요시)
+                },
+                stop=["<|im_end|>", "<|endoftext|>"], # 대화 종료 시점 명시
                 stream=True
             )
             
-            for chunk in stream:
-                content = chunk.choices[0].delta.content
-                if content:
-                    yield content
+            async for chunk in stream:
+                if chunk.choices and len(chunk.choices) > 0:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        yield content
 
-        except NotFoundError as e:
-            self._model_verified = False
-            available = []
-            try:
-                available = self._get_available_model_ids()
-            except Exception:
-                pass
-            raise ValueError(
-                "요청한 모델이 vLLM에 존재하지 않습니다. "
-                f"현재 설정: '{self.model}', 사용 가능: {available}. "
-            ) from e
+        except Exception as e:
+            self.logger.error(f"Error in stream_chat: {str(e)}")
+            yield f"[오류 발생: {str(e)}]"
 
     async def chat(
         self,
@@ -196,16 +203,13 @@ class VLMService:
         history: List[dict] = None
     ) -> str:
         """채팅 응답 생성 (다중 이미지 및 문서 지원)"""
-        self._ensure_model_available()
+        await self._ensure_model_available()
 
-        # 문서 처리 (PDF 텍스트 추출)
         full_message = message
         if documents:
             doc_texts = []
             for doc in documents:
-                # 간단히 PDF라고 가정하거나, 헤더를 보고 판단 가능
-                # 현재는 PDF 텍스트 추출 시도
-                text = self.extract_text_from_pdf(doc)
+                text = await run_in_threadpool(self.extract_text_from_pdf, doc)
                 doc_texts.append(text)
             
             if doc_texts:
@@ -214,25 +218,20 @@ class VLMService:
         messages = self.build_messages(full_message, images_base64, history)
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                temperature=self.temperature
+                temperature=settings.VLM_TEMPERATURE,
+                top_p=settings.VLM_TOP_P,
+                extra_body={
+                    "repetition_penalty": settings.VLM_REPETITION_PENALTY
+                },
+                stop=["<|im_end|>", "<|endoftext|>"]
             )
-        except NotFoundError as e:
-            self._model_verified = False
-            available = []
-            try:
-                available = self._get_available_model_ids()
-            except Exception:
-                pass
-            raise ValueError(
-                "요청한 모델이 vLLM에 존재하지 않습니다. "
-                f"현재 설정: '{self.model}', 사용 가능: {available}. "
-                "vLLM의 /v1/models 결과의 id로 VLM_MODEL을 맞추거나, vLLM 실행 시 --served-model-name을 사용하세요."
-            ) from e
-
-        return response.choices[0].message.content
+            return response.choices[0].message.content
+        except Exception as e:
+            self.logger.error(f"Error in chat: {str(e)}")
+            return f"[오류 발생: {str(e)}]"
 
 
 

@@ -1,4 +1,15 @@
-# Python
+# --- 환경 변수 및 비밀 정보 (가장 중요) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+*.pem
+*.key
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -6,64 +17,69 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
-develop-eggs/
 dist/
 downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.mypy_cache/
 
-# 환경 변수
-.env
-.env.local
+# --- Node.js (Frontend) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.eslintcache
 
-# IDE
+# --- IDE 및 OS ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Frontend Build
-frontend/dist/
-frontend/build/
-
-# OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# 로그
+# --- 로그 및 실행 파일 ---
 *.log
-
-# 데이터베이스
-*.db
-*.sqlite3
-
-# 임시 파일
-*.tmp
-*.temp
-
-
+nohup.out
 logs/
 pids/
+*.pid
 
-# assets
+# --- 데이터베이스 (SQLite 및 기타) ---
+*.db
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# --- AI 모델 및 대용량 데이터 ---
+training/
+backend/training/
+.cache/
+models/
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+
+# --- 임시 파일 및 기타 ---
+*.tmp
+*.temp
+.gemini/
+
+# --- 미디어 파일 (학습 데이터 및 대용량 소스) ---
+# UI 에셋(logo 등)이 포함되어야 한다면 필요에 따라 조정하세요.
 *.png
 *.jpg
 *.jpeg
@@ -77,6 +93,3 @@ pids/
 *.mov
 *.flv
 *.mkv
-
-# training
-training/

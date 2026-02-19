@@ -2,6 +2,32 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 from datetime import datetime
 
+# --- Auth Schemas ---
+
+class UserBase(BaseModel):
+    email: str
+    username: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    success: bool = True
+    message: Optional[str] = None
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
 # --- 요청/응답 스키마 (Pydantic) ---
 
 class ChatRequest(BaseModel):

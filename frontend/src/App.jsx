@@ -1,14 +1,32 @@
 import React, { useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import ChatInterface from './components/ChatInterface'
 import Sidebar from './components/Sidebar'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import './styles/App.css'
+import './styles/Auth.css'
 
-function App() {
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <div className="auth-container">Loading...</div>;
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+const MainLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [currentSessionId, setCurrentSessionId] = useState(null); // 현재 선택된 채팅방 ID
+  const [currentSessionId, setCurrentSessionId] = useState(null);
 
   const handleNewChat = () => {
-    setCurrentSessionId(null); // 새 채팅 모드
-    // 모바일에서는 새 채팅 누르면 사이드바 닫기 (선택사항)
+    setCurrentSessionId(null);
     if (window.innerWidth <= 768) {
       setIsSidebarOpen(false);
     }
@@ -16,7 +34,6 @@ function App() {
 
   const handleSelectChat = (sessionId) => {
     setCurrentSessionId(sessionId);
-    // 모바일에서는 채팅 선택 시 사이드바 닫기
     if (window.innerWidth <= 768) {
       setIsSidebarOpen(false);
     }
@@ -61,6 +78,24 @@ function App() {
         </main>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

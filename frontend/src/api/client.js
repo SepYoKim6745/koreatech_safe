@@ -9,6 +9,43 @@ const apiClient = axios.create({
   },
 })
 
+// Request interceptor to add token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+export const authAPI = {
+  async login(username, password) {
+    // Backend uses OAuth2Form which expects form-data 'username' and 'password'
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+    const response = await apiClient.post('/api/auth/login', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  async signup(email, password, username) {
+    const response = await apiClient.post('/api/auth/signup', { email, password, username });
+    return response.data;
+  },
+  async getMe() {
+    const response = await apiClient.get('/api/auth/me');
+    return response.data;
+  },
+  async deleteAccount() {
+    const response = await apiClient.delete('/api/auth/me');
+    return response.data;
+  }
+};
+
 export const chatAPI = {
   /**
    * 채팅 메시지 전송
@@ -32,12 +69,18 @@ export const chatAPI = {
   /**
    * 채팅 메시지 스트리밍 전송
    */
-  async streamMessage(message, images = [], documents = [], fileNames = [], history = [], sessionId = null, onChunk, onSessionId) {
+  async streamMessage(message, images = [], documents = [], fileNames = [], history = [], sessionId = null, onChunk, onSessionId, signal) {
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: JSON.stringify({
         message,
         images: images || [],
@@ -45,7 +88,8 @@ export const chatAPI = {
         file_names: fileNames || [],
         history,
         session_id: sessionId
-      })
+      }),
+      signal: signal
     });
 
     if (!response.body) return;

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -12,6 +12,14 @@ DB_URL = "sqlite:///./koreatech_safe.db"
 engine = create_engine(
     DB_URL, connect_args={"check_same_thread": False}
 )
+
+# WAL 모드 활성화 (동시성 향상)
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")  # 외래 키 제약 조건 활성화 (필수)
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

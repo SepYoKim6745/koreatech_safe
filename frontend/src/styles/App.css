@@ -196,41 +196,77 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+.user-profile-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+}
+
 .user-profile {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-radius: 12px;
   cursor: pointer;
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 16px;
   transition: all 0.2s ease;
-  gap: 14px;
+  gap: 12px;
+  flex: 1;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.logout-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .user-avatar-img {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   background-color: #eee;
 }
 
 .user-avatar-placeholder {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: #eee;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 16px;
 }
 
 .user-profile:hover {
   background-color: rgba(0,0,0,0.04);
+}
+
+.account-delete-btn {
+  background: transparent;
+  border: none;
+  color: #FF3B30;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.account-delete-btn:hover {
+  background-color: #FFF0F0;
 }
 
 /* --- Menu & Options --- */
@@ -846,81 +882,85 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.3); /* Slightly lighter overlay */
+  backdrop-filter: blur(12px); /* Stronger blur for premium feel */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeInOverlay 0.2s ease-out;
+  animation: fadeInOverlay 0.3s ease-out;
 }
 
 .modal-content {
-  background-color: white;
-  width: 320px;
-  padding: 24px;
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  transform: scale(0.95);
-  animation: scaleInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+  width: 340px;
+  padding: 32px 24px;
+  border-radius: 24px; /* More rounded */
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+  transform: scale(0.9);
+  animation: scaleInModal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
 }
 
 .modal-message {
   font-size: 15px;
   color: var(--text-secondary);
   line-height: 1.5;
-  margin-bottom: 24px;
-  white-space: pre-wrap; /* 줄바꿈 허용 */
+  margin-bottom: 28px;
+  white-space: pre-wrap;
 }
 
 .modal-actions {
   display: flex;
-  gap: 12px;
+  flex-direction: column; /* Vertical buttons like iOS for better focus */
+  gap: 8px;
 }
 
 .modal-btn {
-  flex: 1;
-  padding: 12px;
+  width: 100%;
+  padding: 14px;
   border: none;
-  border-radius: 12px;
-  font-size: 15px;
+  border-radius: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.modal-btn.cancel {
-  background-color: #F5F5F7;
-  color: var(--text-primary);
-}
-
-.modal-btn.cancel:hover {
-  background-color: #E8E8ED;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .modal-btn.confirm {
   background-color: var(--color-blue);
   color: white;
-}
-
-.modal-btn.confirm:hover {
-  opacity: 0.9;
+  order: 1; /* Confirm button usually top or bottom depending on OS, but here top for primary action */
 }
 
 .modal-btn.confirm.danger {
-  background-color: #FF3B30; /* Apple Red */
+  background-color: #FF3B30;
 }
 
-.modal-btn.confirm.danger:hover {
-  background-color: #FF2D20;
+.modal-btn.cancel {
+  background-color: transparent;
+  color: var(--color-blue); /* Text button style for secondary action */
+  order: 2;
+}
+
+.modal-btn:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.modal-btn:active {
+  transform: scale(0.98);
+  filter: brightness(0.9);
 }
 
 @keyframes fadeInOverlay {
@@ -929,6 +969,6 @@ body {
 }
 
 @keyframes scaleInModal {
-  from { transform: scale(0.95); opacity: 0; }
+  from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }

@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { chatAPI } from '../api/client';
+import { chatAPI, authAPI } from '../api/client';
 import Modal from './Modal';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSidebar }) => {
+  const { user, logout } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [newTitle, setNewTitle] = useState("");
-  const [openMenuSessionId, setOpenMenuSessionId] = useState(null); // 현재 열린 메뉴 ID
+  const [openMenuSessionId, setOpenMenuSessionId] = useState(null); 
   
   // 모달 상태
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [imgError, setImgError] = useState(false);
 
@@ -33,7 +37,7 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
 
   // 메뉴 토글
   const handleToggleMenu = (e, sessionId) => {
-    e.stopPropagation(); // 상위 클릭 이벤트 전파 방지
+    e.stopPropagation();
     setOpenMenuSessionId(prev => prev === sessionId ? null : sessionId);
   };
 
@@ -42,7 +46,7 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
     e.stopPropagation();
     setEditingSessionId(session.id);
     setNewTitle(session.title);
-    setOpenMenuSessionId(null); // 메뉴 닫기
+    setOpenMenuSessionId(null);
   };
 
   // 채팅방 이름 저장
@@ -69,10 +73,10 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
     }
   };
 
-  // 채팅방 삭제 버튼 클릭 (모달 열기)
+  // 채팅방 삭제 버튼 클릭
   const handleDeleteClick = (e, sessionId) => {
     e.stopPropagation();
-    setOpenMenuSessionId(null); // 메뉴 닫기
+    setOpenMenuSessionId(null);
     setSessionToDelete(sessionId);
     setIsDeleteModalOpen(true);
   };
@@ -83,11 +87,8 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
 
     try {
       await chatAPI.deleteSession(sessionToDelete);
-      
-      // 목록에서 제거
       setSessions(prev => prev.filter(s => s.id !== sessionToDelete));
       
-      // 현재 열려있는 채팅방이면 초기화
       if (currentSessionId === sessionToDelete) {
         onNewChat();
       }
@@ -97,6 +98,29 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
     } finally {
       setIsDeleteModalOpen(false);
       setSessionToDelete(null);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsLogoutModalOpen(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    try {
+      await authAPI.deleteAccount();
+      // 삭제 애니메이션이나 효과를 위해 아주 잠깐 대기 후 로그아웃
+      setTimeout(() => {
+        logout();
+      }, 300);
+    } catch (error) {
+      console.error("계정 삭제 실패:", error);
+      alert("계정 삭제 중 오류가 발생했습니다.");
+      setIsDeletingAccount(false);
+    } finally {
+      // 로그아웃으로 컴포넌트가 사라지므로 state 관리는 의미 없을 수 있지만 안전을 위해
+      setIsDeleteAccountModalOpen(false);
     }
   };
 
@@ -111,7 +135,7 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
         <div className="sidebar-logo" onClick={onNewChat} style={{cursor: 'pointer'}}>
           <img 
             src="/assets/logo_kor_v2.png" 
-            onError={(e) => {e.target.src = 'https://placehold.co/120x40/183072/ffffff?text=SafeChat';}} 
+            onError={(e) => {e.target.src = 'https://placehold.co/120x40/183072/ffffff?text=SafeChat';}}
             alt="App Logo" 
             className="logo-img"
           />
@@ -181,18 +205,32 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
       </div>
 
       <div className="sidebar-footer">
-        <div className="user-profile" onClick={() => setIsProfileModalOpen(true)}>
-          {!imgError ? (
-            <img 
-              src="/assets/profile.png" 
-              onError={() => setImgError(true)} 
-              alt="User" 
-              className="user-avatar-img"
-            />
-          ) : (
-            <span className="user-avatar-placeholder">👤</span>
-          )}
-          <span className="user-name">사용자</span>
+        <div className="user-profile-container">
+          <div className="user-profile" onClick={() => setIsLogoutModalOpen(true)}>
+            {!imgError ? (
+              <img 
+                src="/assets/profile.png" 
+                onError={() => setImgError(true)} 
+                alt="User" 
+                className="user-avatar-img"
+              />
+            ) : (
+              <span className="user-avatar-placeholder">👤</span>
+            )}
+            <div className="user-info">
+              <span className="user-name">{user?.username || user?.email?.split('@')[0] || '사용자'}</span>
+              <span className="logout-hint">로그아웃</span>
+            </div>
+          </div>
+          <button 
+            className="account-delete-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDeleteAccountModalOpen(true);
+            }}
+          >
+            탈퇴
+          </button>
         </div>
       </div>
     </aside>
@@ -209,13 +247,25 @@ const Sidebar = ({ onNewChat, onSelectChat, currentSessionId, isOpen, toggleSide
     />
 
     <Modal
-        isOpen={isProfileModalOpen}
-        title="알림"
-        message="추후 개발 예정입니다."
-        confirmText="확인"
-        showCancel={false}
-        onConfirm={() => setIsProfileModalOpen(false)}
-        onCancel={() => setIsProfileModalOpen(false)}
+        isOpen={isLogoutModalOpen}
+        title="로그아웃"
+        message="로그아웃 하시겠습니까?"
+        confirmText="로그아웃"
+        cancelText="취소"
+        isDanger={true}
+        onConfirm={handleLogout}
+        onCancel={() => setIsLogoutModalOpen(false)}
+    />
+
+    <Modal
+        isOpen={isDeleteAccountModalOpen}
+        title="계정 탈퇴"
+        message={"정말로 계정을 삭제하시겠습니까?\n모든 채팅 기록이 영구히 삭제되며\n이 작업은 되돌릴 수 없습니다."}
+        confirmText={isDeletingAccount ? "처리 중..." : "탈퇴하기"}
+        cancelText="취소"
+        isDanger={true}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => !isDeletingAccount && setIsDeleteAccountModalOpen(false)}
     />
     </>
   );

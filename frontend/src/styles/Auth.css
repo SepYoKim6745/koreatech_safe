@@ -1,0 +1,152 @@
+/* Auth Pages - Apple Style Modern Design */
+.auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bg-sidebar); /* #F5F5F7 */
+  padding: 20px;
+}
+
+.auth-card {
+  background: #FFFFFF;
+  padding: 48px;
+  border-radius: 24px; /* 더 둥글게 */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); /* 부드럽고 깊은 그림자 */
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.04); /* 미세한 테두리 */
+}
+
+.auth-logo {
+  height: 48px; /* 로고 크기 확대 */
+  margin-bottom: 24px;
+  object-fit: contain;
+}
+
+.auth-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  letter-spacing: -0.5px; /* 타이포그래피 조절 */
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 40px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.input-group {
+  text-align: left;
+}
+
+.input-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px; /* 입력창도 둥글게 */
+  font-size: 16px;
+  outline: none;
+  background-color: #FAFAFA; /* 아주 연한 회색 배경 */
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  color: var(--text-primary);
+}
+
+.auth-input::placeholder {
+  color: #C7C7CC;
+}
+
+.auth-input:focus {
+  border-color: var(--color-blue);
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(24, 48, 114, 0.1); /* Blue focus ring */
+}
+
+.auth-button {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--color-blue); /* 메인 컬러 사용 */
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 24px;
+  box-shadow: 0 4px 12px rgba(24, 48, 114, 0.2);
+}
+
+.auth-button:hover {
+  background-color: var(--color-light-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(24, 48, 114, 0.3);
+}
+
+.auth-button:active {
+  transform: translateY(0);
+}
+
+.auth-footer {
+  margin-top: 32px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.auth-link {
+  color: var(--color-blue);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 6px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.auth-link:hover {
+  color: var(--color-light-blue);
+  text-decoration: underline;
+}
+
+.error-message {
+  color: #FF3B30; /* Apple Red */
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
+  background-color: #FFF0F0;
+  padding: 10px;
+  border-radius: 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.error-message::before {
+  content: "⚠️";
+  font-size: 14px;
+}

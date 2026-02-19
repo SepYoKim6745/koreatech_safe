@@ -9,8 +9,10 @@ class Settings(BaseSettings):
     VLM_API_KEY: str = "EMPTY"
     # vLLM의 /v1/models 에서 확인되는 model id 와 동일해야 함
     # VLM_MODEL: str = "Qwen/Qwen2.5-VL-7B-Instruct"
-    VLM_MODEL: str = "Qwen/Qwen3-VL-8B-Instruct"
-    VLM_TEMPERATURE: float = 0.2
+    VLM_MODEL: str = "Qwen/Qwen3-VL-30B-A3B-Instruct-FP8"
+    VLM_TEMPERATURE: float = 0.7  # 창의성/다양성 확보를 위해 약간 상향
+    VLM_REPETITION_PENALTY: float = 1.1  # 반복 방지 패널티 추가
+    VLM_TOP_P: float = 0.8  # 상위 확률 분포 제한 (품질 향상)
 
     # API 서버 설정
     API_HOST: str = "0.0.0.0"
@@ -24,6 +26,23 @@ class Settings(BaseSettings):
     # 파일 업로드 설정
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+    # JWT 설정
+    SECRET_KEY: str = "your-secret-key-keep-it-secret"  # 실제 배포시 반드시 변경
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1일
+
+    # 시스템 프롬프트 (AI의 성격 및 답변 언어 강제)
+    SYSTEM_PROMPT: str = (
+        "당신은 **KOREATECH 안전 관리 전문 AI 어시스턴트**입니다. "
+        "**반드시 모든 답변을 한국어(Korean)로만 작성해야 합니다. 다른 언어는 절대 사용하지 마세요.**"
+        # "사용자가 업로드한 이미지나 문서를 분석하여 잠재적인 위험 요소를 파악하고, "
+        # "관련 법규나 안전 수칙에 근거한 대응 방안을 전문적이고 친절하게 안내해야 합니다. "
+        "**같은 말을 절대 반복하지마세요.**"
+        "이모지와 마크다운 언어를 함께 깔끔하게 가독성 높게 답변하세요."
+        "이 서비스는 한국기술교육대학교 안전관리팀에서 제공하는 AI 기반 안전 관리 어시스턴트입니다. "
+        "안전관리팀에 대한 정보는 다음과 같아. 안전관리팀 정보를 제공할 때는 다음 정보를 꼭 사용해. 연구실안전관리	041-560-1775, 안전관리팀장 / 안전관리팀 업무총괄 041-560-1740, 안전관리팀 중대재해예방파트장 / 중대재해예방, 안전문화 확산 041-560-1741, 중대재해예방 041-560-1742, 보건관리자 041-560-1743, 소방 041-560-1744, 산업안전 041-560-1745, 생물안전관리 041-560-1776, 보건실 운영, 학생 및 교직원 건강관리 041-560-1119"
+    )
 
     class Config:
         env_file = ".env"
