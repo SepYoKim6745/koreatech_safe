@@ -16,7 +16,14 @@ const Login = () => {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      const msg = err.message || '';
+      if (msg.includes('429') || msg.includes('Too many')) {
+        setError('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.');
+      } else if (msg.includes('deactivated')) {
+        setError('비활성화된 계정입니다. 관리자에게 문의하세요.');
+      } else {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      }
     }
   };
 

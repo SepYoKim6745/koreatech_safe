@@ -1,16 +1,27 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import List, Optional, Literal
 from datetime import datetime
+import re
 
 # --- Auth Schemas ---
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr  # 이메일 형식 검증
     username: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
-    is_admin: Optional[bool] = False
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError("비밀번호는 최소 8자 이상이어야 합니다.")
+        if not re.search(r"[A-Za-z]", v):
+            raise ValueError("비밀번호에 영문자가 포함되어야 합니다.")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("비밀번호에 숫자가 포함되어야 합니다.")
+        return v
 
 class UserResponse(UserBase):
     id: int
@@ -26,11 +37,22 @@ class UserResponse(UserBase):
 
 class AdminUserUpdate(BaseModel):
     username: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
 
 class AdminPasswordReset(BaseModel):
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError("비밀번호는 최소 8자 이상이어야 합니다.")
+        if not re.search(r"[A-Za-z]", v):
+            raise ValueError("비밀번호에 영문자가 포함되어야 합니다.")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("비밀번호에 숫자가 포함되어야 합니다.")
+        return v
 
 class Token(BaseModel):
     access_token: Optional[str] = None
@@ -105,7 +127,7 @@ class ReportResponse(BaseModel):
     reason: Optional[str] = None
     status: str
     created_at: datetime
-    
+
     # 상세 정보 (선택 사항)
     message_content: Optional[str] = None
     reporter_username: Optional[str] = None

@@ -1,3 +1,4 @@
+import secrets
 from pydantic_settings import BaseSettings
 
 
@@ -20,24 +21,30 @@ class Settings(BaseSettings):
     API_TITLE: str = "VLM Chatbot API"
     API_VERSION: str = "1.0.0"
 
-    # CORS 설정
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
+    # CORS 설정 (와일드카드 제거 — 허용할 도메인만 명시)
+    CORS_ORIGINS: list = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://172.18.1.175:3000",
+    ]
 
     # 파일 업로드 설정
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
-    # JWT 설정
-    SECRET_KEY: str = "your-secret-key-keep-it-secret"  # 실제 배포시 반드시 변경
+    # JWT 설정 — .env에서 SECRET_KEY를 반드시 설정하세요
+    SECRET_KEY: str = secrets.token_urlsafe(64)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1일
+
+    # 로그인 Rate Limiting 설정
+    LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = 5        # 최대 시도 횟수
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 300    # 제한 시간 창 (5분)
 
     # 시스템 프롬프트 (AI의 성격 및 답변 언어 강제)
     SYSTEM_PROMPT: str = (
         "당신은 **KOREATECH 안전 관리 전문 AI 어시스턴트**입니다. "
         "**반드시 모든 답변을 한국어(Korean)로만 작성해야 합니다. 다른 언어는 절대 사용하지 마세요.**"
-        # "사용자가 업로드한 이미지나 문서를 분석하여 잠재적인 위험 요소를 파악하고, "
-        # "관련 법규나 안전 수칙에 근거한 대응 방안을 전문적이고 친절하게 안내해야 합니다. "
         "**같은 말을 절대 반복하지마세요.**"
         "이모지와 마크다운 언어를 함께 깔끔하게 가독성 높게 답변하세요."
         "이 서비스는 한국기술교육대학교 안전관리팀에서 제공하는 AI 기반 안전 관리 어시스턴트입니다. "

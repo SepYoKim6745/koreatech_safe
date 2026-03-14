@@ -28,7 +28,7 @@ const Signup = () => {
       await signup(email, password, username);
       setIsSuccessModalOpen(true); // 성공 시 모달 열기
     } catch (err) {
-      setError('이미 사용 중인 이메일이거나 회원가입 중 오류가 발생했습니다.');
+      setError(err.message || '이미 사용 중인 이메일이거나 회원가입 중 오류가 발생했습니다.');
     }
   };
 
@@ -77,10 +77,11 @@ const Signup = () => {
           <div className="input-group">
             <input
               type="password"
-              placeholder="비밀번호"
+              placeholder="비밀번호 (8자 이상, 영문+숫자)"
               className="auth-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
               required
             />
           </div>

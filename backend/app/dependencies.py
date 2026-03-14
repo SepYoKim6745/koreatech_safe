@@ -24,10 +24,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
         token_data = TokenData(email=email)
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.email == token_data.email).first()
     if user is None:
         raise credentials_exception
+
+    # 비활성화된 계정 차단
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated. Please contact administrator."
+        )
+
     return user
 
 async def get_current_admin_user(current_user: User = Depends(get_current_user)):

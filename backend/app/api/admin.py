@@ -7,7 +7,7 @@ from app.dependencies import get_current_admin_user
 from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage, Report
 from app.schemas import (
-    UserResponse, ChatSessionResponse, ChatMessageResponse, 
+    UserResponse, ChatSessionResponse, ChatMessageResponse,
     ReportResponse, GroupedReportResponse, AdminUserUpdate, AdminPasswordReset
 )
 from app.core.security import get_password_hash
@@ -15,6 +15,12 @@ from pydantic import BaseModel
 from datetime import datetime
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+def _escape_like(value: str) -> str:
+    """LIKE 쿼리에서 와일드카드 문자를 이스케이프"""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 class AdminChatSessionResponse(BaseModel):
     id: int
@@ -49,10 +55,14 @@ async def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
-    
+
+    # 다른 관리자 계정은 삭제 불가
+    if user.is_admin:
+        raise HTTPException(status_code=400, detail="Cannot delete another admin user")
+
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully"}
@@ -68,7 +78,7 @@ async def update_user_info(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if user_data.username is not None:
         user.username = user_data.username
     if user_data.email is not None:
@@ -79,7 +89,7 @@ async def update_user_info(
         user.email = user_data.email
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
-        
+
     db.commit()
     db.refresh(user)
     return user
@@ -95,7 +105,7 @@ async def reset_user_password(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     user.hashed_password = get_password_hash(password_data.new_password)
     db.commit()
     return {"message": "Password updated successfully"}
@@ -110,7 +120,6 @@ async def list_user_chats(
     sessions = db.query(ChatSession).filter(ChatSession.user_id == user_id).order_by(ChatSession.updated_at.desc()).all()
     result = []
     for s in sessions:
-        # 이 세션에 포함된 신고 수 계산
         reports = db.query(Report).join(ChatMessage).filter(ChatMessage.session_id == s.id).all()
         report_count = len(reports)
         pending_count = len([r for r in reports if r.status == "pending"])
@@ -137,18 +146,18 @@ async def list_all_chats(
 ):
     """모든 사용자의 채팅 세션 목록 조회 (키워드 검색 가능)"""
     query = db.query(ChatSession)
-    
+
     if keyword:
-        # 제목 또는 대화 내용에 키워드가 포함된 경우 필터링
+        # LIKE 와일드카드 이스케이프 처리
+        escaped = _escape_like(keyword)
         query = query.join(ChatMessage).filter(
-            (ChatSession.title.ilike(f"%{keyword}%")) | 
-            (ChatMessage.content.ilike(f"%{keyword}%"))
+            (ChatSession.title.ilike(f"%{escaped}%", escape="\\")) |
+            (ChatMessage.content.ilike(f"%{escaped}%", escape="\\"))
         ).distinct()
-        
+
     sessions = query.order_by(ChatSession.updated_at.desc()).all()
     result = []
     for s in sessions:
-        # 이 세션에 포함된 신고 수 계산
         reports = db.query(Report).join(ChatMessage).filter(ChatMessage.session_id == s.id).all()
         report_count = len(reports)
         pending_count = len([r for r in reports if r.status == "pending"])
@@ -177,8 +186,7 @@ async def get_session_messages(
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
-    # DB 모델 -> 스키마 변환 (이미지 데이터 파싱)
+
     response_messages = []
     for msg in session.messages:
         files_data = []
@@ -187,13 +195,11 @@ async def get_session_messages(
             if cleaned_url.startswith("[") and cleaned_url.endswith("]"):
                 try:
                     files_data = json.loads(cleaned_url)
-                except Exception as e:
-                    print(f"JSON parsing error: {e}")
+                except Exception:
                     files_data = [{"type": "image", "preview": msg.image_url}]
             else:
                 files_data = [{"type": "image", "preview": msg.image_url}]
-        
-        # 신고 상태 확인
+
         report_status = None
         if msg.reports:
             if any(r.status == "pending" for r in msg.reports):
@@ -210,11 +216,7 @@ async def get_session_messages(
             created_at=msg.created_at,
             report_status=report_status
         ))
-    
-    print(f"DEBUG: Sending {len(response_messages)} messages for session {session_id}")
-    if response_messages:
-        print(f"DEBUG: First message files: {response_messages[0].files}")
-    
+
     return response_messages
 
 @router.delete("/chats/{session_id}")
@@ -227,7 +229,7 @@ async def delete_chat_session(
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     db.delete(session)
     db.commit()
     return {"message": "Chat session deleted successfully"}
@@ -240,7 +242,7 @@ async def list_reports(
     """모든 신고 내역을 사용자별로 그룹화하여 조회 (상태 포함)"""
     reports = db.query(Report).all()
     user_groups = {}
-    
+
     for r in reports:
         u_id = r.user_id
         if u_id not in user_groups:
@@ -252,21 +254,21 @@ async def list_reports(
                 "latest_report_at": r.created_at,
                 "reported_session_ids": set()
             }
-        
+
         group = user_groups[u_id]
         group["total_report_count"] += 1
         if r.status == "pending":
             group["pending_count"] += 1
-            
+
         if r.created_at > group["latest_report_at"]:
             group["latest_report_at"] = r.created_at
         group["reported_session_ids"].add(r.message.session_id)
-    
+
     result = []
     for g in user_groups.values():
         g["reported_session_ids"] = list(g["reported_session_ids"])
         result.append(GroupedReportResponse(**g))
-    
+
     return result
 
 @router.get("/reports/session/{session_id}/user/{user_id}")
@@ -281,10 +283,10 @@ async def get_report_details(
         ChatMessage.session_id == session_id,
         Report.user_id == user_id
     ).all()
-    
+
     if not reports:
         raise HTTPException(status_code=404, detail="No reports found for this session and user")
-    
+
     return {
         "session_id": session_id,
         "user_id": user_id,
@@ -308,10 +310,10 @@ async def resolve_session_reports(
         Report.user_id == user_id,
         Report.status == "pending"
     ).all()
-    
+
     for r in reports:
         r.status = "resolved"
-    
+
     db.commit()
     return {"message": f"Successfully resolved {len(reports)} reports"}
 
@@ -325,7 +327,7 @@ async def delete_report(
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    
+
     db.delete(report)
     db.commit()
     return {"message": "Report deleted successfully"}
@@ -342,9 +344,9 @@ async def delete_session_reports(
         ChatMessage.session_id == session_id,
         Report.user_id == user_id
     ).all()
-    
+
     for r in reports:
         db.delete(r)
-    
+
     db.commit()
     return {"message": f"Successfully deleted {len(reports)} reports"}

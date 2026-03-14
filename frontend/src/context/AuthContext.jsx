@@ -10,8 +10,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const data = await authAPI.login(email, password);
-      
-      // 200 OK 응답이지만 success가 false인 경우 (로그인 실패)
+
+      // 200 OK 응답이지만 success가 false인 경우 (하위 호환성)
       if (data.success === false) {
         throw new Error(data.message || 'Login failed');
       }
@@ -20,7 +20,10 @@ export const AuthProvider = ({ children }) => {
       await fetchUser();
       return true;
     } catch (error) {
-      // 에러를 상위 컴포넌트(Login.jsx)로 전달하여 UI에 표시하도록 함
+      // axios 에러에서 서버 메시지 추출
+      if (error.response?.data?.detail) {
+        throw new Error(error.response.data.detail);
+      }
       throw error;
     }
   };
@@ -30,6 +33,15 @@ export const AuthProvider = ({ children }) => {
       await authAPI.signup(email, password, username);
       return true;
     } catch (error) {
+      if (error.response?.data?.detail) {
+        // Pydantic 검증 에러 (배열)인 경우
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          const messages = detail.map(d => d.msg?.replace('Value error, ', '') || d.msg).join('\n');
+          throw new Error(messages);
+        }
+        throw new Error(detail);
+      }
       throw error;
     }
   };
