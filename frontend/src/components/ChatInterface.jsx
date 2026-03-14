@@ -4,7 +4,7 @@ import ImageUpload from './ImageUpload'
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Modal from './Modal';
@@ -500,7 +500,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                 
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkBreaks]}
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[rehypeSanitize]}
                   components={{
                     code({node, inline, className, children, ...props}) {
                       const match = /language-(\w+)/.exec(className || '')

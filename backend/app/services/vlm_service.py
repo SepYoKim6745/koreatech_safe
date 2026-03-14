@@ -84,7 +84,7 @@ class VLMService:
             return text
         except Exception as e:
             self.logger.error(f"PDF extraction failed: {e}")
-            return f"[PDF 변환 오류: {str(e)}]"
+            return "[PDF 변환 오류: 문서를 처리할 수 없습니다. 파일이 손상되었거나 지원하지 않는 형식입니다.]"
 
     def create_message_content(
         self,
@@ -193,7 +193,7 @@ class VLMService:
 
         except Exception as e:
             self.logger.error(f"Error in stream_chat: {str(e)}")
-            yield f"[오류 발생: {str(e)}]"
+            yield "[오류 발생: AI 응답을 생성할 수 없습니다. 잠시 후 다시 시도해주세요.]"
 
     async def chat(
         self,
@@ -231,7 +231,7 @@ class VLMService:
             return response.choices[0].message.content
         except Exception as e:
             self.logger.error(f"Error in chat: {str(e)}")
-            return f"[오류 발생: {str(e)}]"
+            return "[오류 발생: AI 응답을 생성할 수 없습니다. 잠시 후 다시 시도해주세요.]"
 
 
 
