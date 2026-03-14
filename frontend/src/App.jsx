@@ -4,6 +4,7 @@ import ChatInterface from './components/ChatInterface'
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AdminDashboard from './pages/AdminDashboard'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './styles/App.css'
 import './styles/Auth.css'
@@ -22,8 +23,13 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const MainLayout = () => {
+  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+
+  if (user?.is_admin) {
+    return <Navigate to="/admin" replace />;
+  }
 
   const handleNewChat = () => {
     setCurrentSessionId(null);
@@ -88,6 +94,11 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
           <Route path="/" element={
             <ProtectedRoute>
               <MainLayout />
