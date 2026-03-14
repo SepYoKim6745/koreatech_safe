@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from app.api import chat, auth
+from app.api import chat, auth, admin
 from app.config import settings
 from app.core.database import engine, Base, SessionLocal
 from app.models import user, chat as chat_model # 모델 로드 (테이블 생성을 위해)
@@ -52,6 +52,7 @@ def clean_orphaned_data():
 # 라우터 등록
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(admin.router)
 
 
 @app.get("/")

@@ -10,14 +10,27 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    is_admin: Optional[bool] = False
 
 class UserResponse(UserBase):
     id: int
+    is_admin: bool
     is_active: bool
     created_at: datetime
+    last_login: Optional[datetime] = None
+    last_ip: Optional[str] = None
+    user_agent: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class AdminUserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class AdminPasswordReset(BaseModel):
+    new_password: str
 
 class Token(BaseModel):
     access_token: Optional[str] = None
@@ -72,6 +85,43 @@ class ChatMessageResponse(BaseModel):
     image_url: Optional[str] = None # 하위 호환성 유지
     files: Optional[List[dict]] = None # 상세 파일 정보
     created_at: datetime
+    report_status: Optional[str] = None # 'pending', 'resolved' 또는 None
+
+    class Config:
+        from_attributes = True
+
+# --- 신고(Report) 관련 스키마 ---
+
+class ReportCreate(BaseModel):
+    """신고 생성 요청"""
+    message_id: int
+    reason: Optional[str] = None
+
+class ReportResponse(BaseModel):
+    """신고 응답"""
+    id: int
+    message_id: int
+    user_id: int
+    reason: Optional[str] = None
+    status: str
+    created_at: datetime
+    
+    # 상세 정보 (선택 사항)
+    message_content: Optional[str] = None
+    reporter_username: Optional[str] = None
+    session_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class GroupedReportResponse(BaseModel):
+    """사용자별로 그룹화된 신고 응답"""
+    user_id: int
+    username: str
+    total_report_count: int
+    pending_count: int # 처리 중인 신고 수
+    latest_report_at: datetime
+    reported_session_ids: List[int] # 신고가 발생한 세션 ID 목록
 
     class Config:
         from_attributes = True

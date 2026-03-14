@@ -9,9 +9,10 @@ from jose import JWTError, jwt
 
 from app.schemas import (
     ChatRequest, ChatResponse, ChatSessionResponse, 
-    ChatMessageResponse, ChatSessionCreate, ChatSessionUpdate, TokenData
+    ChatMessageResponse, ChatSessionCreate, ChatSessionUpdate, TokenData,
+    ReportCreate
 )
-from app.models.chat import ChatSession, ChatMessage
+from app.models.chat import ChatSession, ChatMessage, Report
 from app.models.user import User
 from app.services.vlm_service import vlm_service
 from app.config import settings
@@ -119,13 +120,23 @@ async def get_session_messages(
             else:
                 files_data = [{"type": "image", "preview": msg.image_url}]
         
+        # 신고 상태 확인
+        report_status = None
+        if msg.reports:
+            # 하나라도 pending이면 pending, 모두 resolved면 resolved
+            if any(r.status == "pending" for r in msg.reports):
+                report_status = "pending"
+            else:
+                report_status = "resolved"
+
         response_messages.append(ChatMessageResponse(
             id=msg.id,
             role=msg.role,
             content=msg.content,
             image_url=msg.image_url,
             files=files_data,
-            created_at=msg.created_at
+            created_at=msg.created_at,
+            report_status=report_status
         ))
     
     return response_messages
@@ -395,3 +406,39 @@ async def upload_image(
 @router.get("/health")
 async def health_check():
     return {"status": "healthy", "model": settings.VLM_MODEL}
+
+@router.post("/report")
+async def report_message(
+    report_data: ReportCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """메시지 신고"""
+    # 1. 메시지 존재 여부 확인
+    message = db.query(ChatMessage).filter(ChatMessage.id == report_data.message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    # 2. 이미 신고했는지 확인하여 있으면 갱신(Update)
+    existing_report = db.query(Report).filter(
+        Report.message_id == report_data.message_id,
+        Report.user_id == current_user.id
+    ).first()
+    
+    if existing_report:
+        existing_report.reason = report_data.reason
+        existing_report.created_at = datetime.utcnow()
+        db.commit()
+        return {"message": "Report updated successfully", "report_id": existing_report.id}
+    
+    # 3. 새로운 신고 저장
+    new_report = Report(
+        message_id=report_data.message_id,
+        user_id=current_user.id,
+        reason=report_data.reason
+    )
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+    
+    return {"message": "Reported successfully", "report_id": new_report.id}

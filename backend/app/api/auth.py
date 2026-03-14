@@ -1,6 +1,6 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,8 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         email=user.email,
         hashed_password=hashed_password,
-        username=user.username or user.email.split("@")[0]
+        username=user.username or user.email.split("@")[0],
+        is_admin=user.is_admin
     )
     db.add(new_user)
     db.commit()
@@ -31,7 +32,11 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @router.post("/login", response_model=Token)
-def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):
+def login_for_access_token(
+    request: Request,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         # 401 에러 대신 200 OK와 실패 메시지 반환 (콘솔 로그 방지)
@@ -42,6 +47,12 @@ def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depen
             "token_type": None
         }
     
+    # 로그인 정보 업데이트
+    user.last_login = datetime.utcnow()
+    user.last_ip = request.client.host
+    user.user_agent = request.headers.get("user-agent")
+    db.commit()
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires

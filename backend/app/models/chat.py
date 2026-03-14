@@ -32,3 +32,18 @@ class ChatMessage(Base):
 
     # N:1 관계 설정
     session = relationship("ChatSession", back_populates="messages")
+    reports = relationship("Report", back_populates="message", cascade="all, delete-orphan")
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    message_id = Column(Integer, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reason = Column(String, nullable=True) # 신고 사유
+    status = Column(String, default="pending") # 'pending', 'resolved'
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # 관계 설정
+    message = relationship("ChatMessage", back_populates="reports")
+    user = relationship("User", back_populates="reports")

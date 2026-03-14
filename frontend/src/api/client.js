@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = ''
+const API_BASE_URL = 'http://172.18.1.175:8080'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -185,6 +185,77 @@ export const chatAPI = {
     const response = await apiClient.get('/api/chat/health')
     return response.data
   },
+
+  /**
+   * 메시지 신고
+   * @param {number} messageId 
+   * @param {string} reason 
+   */
+  async reportMessage(messageId, reason = "") {
+    const response = await apiClient.post('/api/chat/report', {
+      message_id: messageId,
+      reason: reason
+    })
+    return response.data
+  }
 }
+
+export const adminAPI = {
+  async listUsers() {
+    const response = await apiClient.get('/api/admin/users');
+    return response.data;
+  },
+  async deleteUser(userId) {
+    const response = await apiClient.delete(`/api/admin/users/${userId}`);
+    return response.data;
+  },
+  async updateUserInfo(userId, data) {
+    const response = await apiClient.put(`/api/admin/users/${userId}`, data);
+    return response.data;
+  },
+  async resetUserPassword(userId, newPassword) {
+    const response = await apiClient.put(`/api/admin/users/${userId}/reset-password`, {
+      new_password: newPassword
+    });
+    return response.data;
+  },
+  async listUserChats(userId) {
+    const response = await apiClient.get(`/api/admin/users/${userId}/chats`);
+    return response.data;
+  },
+  async listAllChats(keyword = "") {
+    const params = keyword ? { keyword } : {};
+    const response = await apiClient.get('/api/admin/chats', { params });
+    return response.data;
+  },
+  async getChatMessages(sessionId) {
+    const response = await apiClient.get(`/api/admin/chats/${sessionId}`);
+    return response.data;
+  },
+  async deleteChat(sessionId) {
+    const response = await apiClient.delete(`/api/admin/chats/${sessionId}`);
+    return response.data;
+  },
+  async listReports() {
+    const response = await apiClient.get('/api/admin/reports');
+    return response.data;
+  },
+  async deleteReport(reportId) {
+    const response = await apiClient.delete(`/api/admin/reports/${reportId}`);
+    return response.data;
+  },
+  async getReportDetails(sessionId, userId) {
+    const response = await apiClient.get(`/api/admin/reports/session/${sessionId}/user/${userId}`);
+    return response.data;
+  },
+  async resolveSessionReports(sessionId, userId) {
+    const response = await apiClient.put(`/api/admin/reports/session/${sessionId}/user/${userId}/resolve`);
+    return response.data;
+  },
+  async deleteSessionReports(sessionId, userId) {
+    const response = await apiClient.delete(`/api/admin/reports/session/${sessionId}/user/${userId}`);
+    return response.data;
+  }
+};
 
 export default apiClient

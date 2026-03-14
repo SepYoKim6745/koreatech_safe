@@ -7,6 +7,8 @@ import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import Modal from './Modal';
+import Lightbox from './Lightbox';
 
 const MAX_IMAGES = 5  // 최대 이미지/파일 개수
 
@@ -19,6 +21,18 @@ function ChatInterface({ sessionId, onSessionCreated }) {
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null) // 스트리밍 취소용 컨트롤러
   const isGeneratingRef = useRef(false);
+
+  // 신고 관련 상태
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportMessageId, setReportMessageId] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+
+  // 알림 모달 상태 (alert() 대체용)
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
+
+  // 라이트박스 상태
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   useEffect(() => {
     isGeneratingRef.current = isGenerating;
@@ -74,9 +88,11 @@ function ChatInterface({ sessionId, onSessionCreated }) {
           }
 
           return {
+            id: msg.id,
             role: msg.role,
             content: msg.content,
-            files: messageFiles
+            files: messageFiles,
+            report_status: msg.report_status
           };
         });
         setMessages(formattedMessages);
@@ -142,6 +158,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       let fullContent = "";
       let lastUpdateTime = 0;
       let pendingUpdate = null;
+      let finalSessionId = sessionId;
       
       await chatAPI.streamMessage(
         inputMessage,
@@ -185,6 +202,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
         (newSessionId) => {
           if (abortController.signal.aborted) return;
           if (newSessionId && newSessionId !== sessionId) {
+            finalSessionId = newSessionId;
             onSessionCreated(newSessionId);
           }
         },
@@ -192,14 +210,37 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       )
       
       if (pendingUpdate) clearTimeout(pendingUpdate);
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        const lastMsg = newMsgs[newMsgs.length - 1];
-        if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.content = fullContent;
-        }
-        return newMsgs;
-      });
+      
+      // 스트리밍 완료 후 메시지 ID를 업데이트하기 위해 다시 불러오기
+      if (finalSessionId) {
+          try {
+              const updatedHistory = await chatAPI.getSessionMessages(finalSessionId);
+              const lastMsg = updatedHistory[updatedHistory.length - 1];
+              setMessages(prev => {
+                const newMsgs = [...prev];
+                const lastIdx = newMsgs.length - 1;
+                if (newMsgs[lastIdx] && newMsgs[lastIdx].role === 'assistant') {
+                    newMsgs[lastIdx] = {
+                        ...newMsgs[lastIdx],
+                        id: lastMsg.id,
+                        content: fullContent
+                    };
+                }
+                return newMsgs;
+              });
+          } catch (e) {
+              console.error("Failed to fetch updated message ID:", e);
+              // Fallback: just set content
+              setMessages(prev => {
+                const newMsgs = [...prev];
+                const lastMsg = newMsgs[newMsgs.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                    lastMsg.content = fullContent;
+                }
+                return newMsgs;
+              });
+          }
+      }
 
     } catch (error) {
       if (abortController.signal.aborted) return;
@@ -225,6 +266,52 @@ function ChatInterface({ sessionId, onSessionCreated }) {
       }
     }
   }
+
+  const handleReportClick = (messageId, reportStatus) => {
+    if (!messageId) return;
+
+    if (reportStatus) {
+      setAlertModal({
+        isOpen: true,
+        title: "이미 신고된 메시지",
+        message: reportStatus === 'resolved' 
+          ? "이미 처리가 완료된 신고 건입니다.\n감사합니다." 
+          : "이미 신고가 접수되어 검토 중인 메시지입니다.\n잠시만 기다려주세요."
+      });
+      return;
+    }
+
+    setReportMessageId(messageId);
+    setReportReason("");
+    setIsReportModalOpen(true);
+  };
+  const handleConfirmReport = async () => {
+    try {
+      await chatAPI.reportMessage(reportMessageId, reportReason);
+      
+      // 로컬 상태 업데이트: 신고된 메시지의 상태를 'pending'으로 변경
+      setMessages(prev => prev.map(m => 
+        m.id === reportMessageId ? { ...m, report_status: 'pending' } : m
+      ));
+
+      setAlertModal({
+        isOpen: true,
+        title: "신고 접수 완료",
+        message: "신고가 접수되었습니다.\n관리자가 검토 후 조치하겠습니다."
+      });
+    } catch (error) {
+      console.error("신고 실패:", error);
+      setAlertModal({
+        isOpen: true,
+        title: "신고 실패",
+        message: "신고 처리에 실패했습니다.\n잠시 후 다시 시도해주세요."
+      });
+    } finally {
+      setIsReportModalOpen(false);
+      setReportMessageId(null);
+      setReportReason("");
+    }
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -399,6 +486,11 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                             src={file.preview || file.url}
                             alt={`uploaded-${fileIndex}`}
                             className="message-image"
+                            style={{ cursor: 'zoom-in' }}
+                            onClick={() => {
+                                setLightboxSrc(file.preview || file.url);
+                                setIsLightboxOpen(true);
+                            }}
                             onError={(e) => {e.target.style.display = 'none'}}
                           />
                       );
@@ -434,6 +526,33 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                 > 
                   {msg.content || ''}
                 </ReactMarkdown>
+
+                {msg.role === 'assistant' && msg.id && (
+                  <div className="message-actions" style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      className="report-btn" 
+                      onClick={() => handleReportClick(msg.id, msg.report_status)}
+                      style={{
+                        background: msg.report_status === 'resolved' ? 'rgba(52, 199, 89, 0.1)' : (msg.report_status === 'pending' ? 'rgba(255, 59, 48, 0.1)' : 'none'),
+                        border: 'none',
+                        color: msg.report_status === 'resolved' ? '#34c759' : (msg.report_status === 'pending' ? '#FF3B30' : '#86868b'),
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        transition: 'background 0.2s',
+                        fontWeight: msg.report_status ? '600' : 'normal'
+                      }}
+                      onMouseOver={(e) => !msg.report_status && (e.target.style.background = 'rgba(0,0,0,0.05)')}
+                      onMouseOut={(e) => !msg.report_status && (e.target.style.background = 'none')}
+                    >
+                      {msg.report_status === 'resolved' ? '✅ 처리 완료' : (msg.report_status === 'pending' ? '🚩 처리 중' : '🚩 신고')}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -467,6 +586,45 @@ function ChatInterface({ sessionId, onSessionCreated }) {
           </button>
         </div>
       </div>
+
+      {/* 신고 모달 */}
+      <Modal
+        isOpen={isReportModalOpen}
+        title="메시지 신고"
+        confirmText="신고하기"
+        cancelText="취소"
+        isDanger={true}
+        onConfirm={handleConfirmReport}
+        onCancel={() => setIsReportModalOpen(false)}
+      >
+        <div className="report-modal-content">
+          <p className="report-modal-description">
+            부적절한 답변이나 오류가 있는 답변을 신고해주세요.
+          </p>
+          <textarea
+            className="report-reason-textarea"
+            placeholder="신고 사유를 입력하세요 (선택 사항)"
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+          />
+        </div>
+      </Modal>
+
+      {/* 알림 모달 (alert() 대체용) */}
+      <Modal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        showCancel={false}
+      />
+
+      {/* 이미지 라이트박스 */}
+      <Lightbox 
+        src={lightboxSrc} 
+        isOpen={isLightboxOpen} 
+        onClose={() => setIsLightboxOpen(false)} 
+      />
     </div>
   )
 }
