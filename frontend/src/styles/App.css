@@ -1019,44 +1019,64 @@ body {
   color: #AEAEB2;
 }
 
-/* --- Excel Download Button --- */
-.excel-download-container {
+/* --- Message Actions Row --- */
+.message-actions {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+  gap: 2px;
 }
 
-.excel-download-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #217346, #185C37);
-  color: white;
+/* --- Action Button (공통 스타일) --- */
+.action-btn {
+  background: none;
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--text-secondary, #86868b);
+  font-size: 12px;
   font-family: inherit;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 6px;
   transition: all 0.2s cubic-bezier(0.2, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(33, 115, 70, 0.3);
+  font-weight: 400;
+  line-height: 1;
 }
 
-.excel-download-btn::before {
-  content: "\1F4CA";
-  font-size: 16px;
+.action-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
 }
 
-.excel-download-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(33, 115, 70, 0.4);
+.action-btn:active:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
 }
 
-.excel-download-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.excel-download-btn:disabled {
-  opacity: 0.6;
+.action-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* --- Excel Action Button --- */
+.excel-action-btn {
+  color: #217346;
+}
+
+.excel-action-btn:hover:not(:disabled) {
+  background: rgba(33, 115, 70, 0.08);
+}
+
+/* --- Report Action Button --- */
+.report-action-btn.report-pending {
+  background: rgba(255, 59, 48, 0.08);
+  color: #FF3B30;
+  font-weight: 600;
+}
+
+.report-action-btn.report-resolved {
+  background: rgba(52, 199, 89, 0.08);
+  color: #34c759;
+  font-weight: 600;
 }

@@ -603,39 +603,20 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                   {msg.content || ''}
                 </ReactMarkdown>
 
-                {msg.role === 'assistant' && !isGenerating && hasRiskAssessmentTable(msg.content) && (
-                  <div className="excel-download-container" style={{ marginTop: '12px' }}>
-                    <button
-                      className="excel-download-btn"
-                      onClick={() => handleExcelDownload(msg.content, index)}
-                      disabled={excelLoadingIdx === index}
-                    >
-                      {excelLoadingIdx === index ? '생성 중...' : '엑셀로 다운로드'}
-                    </button>
-                  </div>
-                )}
-
                 {msg.role === 'assistant' && msg.id && (
-                  <div className="message-actions" style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div className="message-actions">
+                    {!isGenerating && hasRiskAssessmentTable(msg.content) && (
+                      <button
+                        className="action-btn excel-action-btn"
+                        onClick={() => handleExcelDownload(msg.content, index)}
+                        disabled={excelLoadingIdx === index}
+                      >
+                        {excelLoadingIdx === index ? '⏳ 생성 중...' : '📊 엑셀 다운로드'}
+                      </button>
+                    )}
                     <button
-                      className="report-btn"
+                      className={`action-btn report-action-btn${msg.report_status ? ` report-${msg.report_status}` : ''}`}
                       onClick={() => handleReportClick(msg.id, msg.report_status)}
-                      style={{
-                        background: msg.report_status === 'resolved' ? 'rgba(52, 199, 89, 0.1)' : (msg.report_status === 'pending' ? 'rgba(255, 59, 48, 0.1)' : 'none'),
-                        border: 'none',
-                        color: msg.report_status === 'resolved' ? '#34c759' : (msg.report_status === 'pending' ? '#FF3B30' : '#86868b'),
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        transition: 'background 0.2s',
-                        fontWeight: msg.report_status ? '600' : 'normal'
-                      }}
-                      onMouseOver={(e) => !msg.report_status && (e.target.style.background = 'rgba(0,0,0,0.05)')}
-                      onMouseOut={(e) => !msg.report_status && (e.target.style.background = 'none')}
                     >
                       {msg.report_status === 'resolved' ? '✅ 처리 완료' : (msg.report_status === 'pending' ? '🚩 처리 중' : '🚩 신고')}
                     </button>
