@@ -136,6 +136,10 @@ class ReportResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ExcelExportRequest(BaseModel):
+    """마크다운 테이블을 엑셀로 변환 요청"""
+    markdown: str = Field(..., max_length=100_000)
+
 class GroupedReportResponse(BaseModel):
     """사용자별로 그룹화된 신고 응답"""
     user_id: int

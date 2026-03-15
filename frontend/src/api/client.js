@@ -197,6 +197,13 @@ export const chatAPI = {
       reason: reason
     })
     return response.data
+  },
+
+  async exportExcel(markdown) {
+    const response = await apiClient.post('/api/chat/export-excel', { markdown }, {
+      responseType: 'blob'
+    });
+    return response.data;
   }
 }
 

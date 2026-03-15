@@ -376,7 +376,17 @@ const Sidebar = ({
                     style={{ cursor: 'pointer' }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                      <span className="chat-title" style={{ fontWeight: 600 }}>{u.username}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="chat-title" style={{ fontWeight: 600 }}>{u.username}</span>
+                        {u.is_admin && (
+                          <span style={{ 
+                            fontSize: '9px', background: '#183072', color: 'white', 
+                            padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold' 
+                          }}>
+                            Admin
+                          </span>
+                        )}
+                      </div>
                       <span style={{ fontSize: '11px', color: '#86868b', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
                     </div>
                     {u.id !== user?.id && (

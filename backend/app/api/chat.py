@@ -1,4 +1,6 @@
 import logging
+import io
+import re
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -11,7 +13,7 @@ from jose import JWTError, jwt
 from app.schemas import (
     ChatRequest, ChatResponse, ChatSessionResponse,
     ChatMessageResponse, ChatSessionCreate, ChatSessionUpdate, TokenData,
-    ReportCreate
+    ReportCreate, ExcelExportRequest
 )
 from app.models.chat import ChatSession, ChatMessage, Report
 from app.models.user import User
@@ -19,10 +21,14 @@ from app.services.vlm_service import vlm_service
 from app.config import settings
 from app.core.database import get_db, SessionLocal
 from app.dependencies import get_current_user, oauth2_scheme
+from app.core.rate_limiter import LoginRateLimiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+# 엑셀 내보내기 Rate Limiter (사용자당 60초 내 5회 제한)
+_export_limiter = LoginRateLimiter(max_attempts=5, window_seconds=60)
 
 # --- 세션(채팅방) 관련 API ---
 
@@ -463,6 +469,170 @@ async def upload_image(
 @router.get("/health")
 async def health_check():
     return {"status": "healthy", "model": settings.VLM_MODEL}
+
+def _strip_markdown(text: str) -> str:
+    """마크다운 서식을 제거하여 순수 텍스트만 반환"""
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)   # **bold**
+    text = re.sub(r'__(.+?)__', r'\1', text)        # __bold__
+    text = re.sub(r'\*(.+?)\*', r'\1', text)        # *italic*
+    text = re.sub(r'_(.+?)_', r'\1', text)          # _italic_
+    text = re.sub(r'~~(.+?)~~', r'\1', text)        # ~~strikethrough~~
+    text = re.sub(r'`(.+?)`', r'\1', text)          # `code`
+    text = text.strip()
+    # Excel Formula Injection 방지: 수식으로 해석되는 선행 문자에 작은따옴표 접두
+    if text and text[0] in ('=', '+', '@', '\t', '\r'):
+        text = "'" + text
+    return text
+
+
+def _parse_markdown_tables(markdown_text: str) -> list[list[list[str]]]:
+    """마크다운 텍스트에서 모든 테이블을 파싱하여 2차원 배열 리스트로 반환"""
+    tables = []
+    lines = markdown_text.strip().split("\n")
+    current_table = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("|") and stripped.endswith("|"):
+            # 구분선(--- 행) 건너뛰기
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if all(re.match(r"^[-:]+$", cell) for cell in cells):
+                continue
+            current_table.append(cells)
+        else:
+            if current_table:
+                tables.append(current_table)
+                current_table = []
+
+    if current_table:
+        tables.append(current_table)
+
+    return tables
+
+
+@router.post("/export-excel")
+async def export_excel(
+    request: ExcelExportRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """마크다운 테이블을 엑셀 파일로 변환하여 다운로드"""
+    # Rate Limiting: 사용자당 60초 내 5회 제한
+    limiter_key = f"export:{current_user.id}"
+    if _export_limiter.is_rate_limited(limiter_key):
+        remaining = _export_limiter.remaining_seconds(limiter_key)
+        raise HTTPException(
+            status_code=429,
+            detail=f"요청이 너무 많습니다. {remaining}초 후 다시 시도해주세요."
+        )
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    tables = _parse_markdown_tables(request.markdown)
+
+    if not tables:
+        raise HTTPException(status_code=400, detail="변환할 테이블이 없습니다.")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "위험성평가"
+
+    # 스타일 정의
+    header_font = Font(name="맑은 고딕", bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="183072", end_color="183072", fill_type="solid")
+    cell_font = Font(name="맑은 고딕", size=10)
+    cell_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    # 위험도 등급에 따른 색상
+    risk_colors = {
+        "저위험": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
+        "보통": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
+        "고위험": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
+        "매우 높음": PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid"),
+    }
+
+    current_row = 1
+
+    for table in tables:
+        if len(table) < 2:
+            continue
+
+        headers = table[0]
+        data_rows = table[1:]
+
+        # 헤더 작성
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=current_row, column=col_idx, value=_strip_markdown(header))
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = cell_alignment
+            cell.border = thin_border
+
+        current_row += 1
+
+        # 데이터 작성
+        for row_data in data_rows:
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws.cell(row=current_row, column=col_idx, value=_strip_markdown(value))
+                cell.font = cell_font
+                cell.border = thin_border
+
+                # 텍스트가 긴 컬럼(유해위험요인, 개선대책 등)은 왼쪽 정렬
+                header_name = headers[col_idx - 1] if col_idx - 1 < len(headers) else ""
+                if any(kw in header_name for kw in ["요인", "대책", "조치", "비고", "공정", "작업"]):
+                    cell.alignment = left_alignment
+                else:
+                    cell.alignment = cell_alignment
+
+                # 위험도 등급 셀에 색상 적용
+                if "등급" in header_name:
+                    try:
+                        grade = int(value)
+                        if grade <= 4:
+                            cell.fill = risk_colors["저위험"]
+                        elif grade <= 9:
+                            cell.fill = risk_colors["보통"]
+                        elif grade <= 15:
+                            cell.fill = risk_colors["고위험"]
+                        else:
+                            cell.fill = risk_colors["매우 높음"]
+                            cell.font = Font(name="맑은 고딕", size=10, color="FFFFFF", bold=True)
+                    except ValueError:
+                        pass
+
+            current_row += 1
+
+        current_row += 1  # 테이블 사이 빈 행
+
+    # 열 너비 자동 조정
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = min(max(max_length + 4, 10), 40)
+
+    # 엑셀 파일을 메모리에 저장
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=risk_assessment.xlsx"
+        }
+    )
+
 
 @router.post("/report")
 async def report_message(

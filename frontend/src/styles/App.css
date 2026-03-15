@@ -1018,3 +1018,45 @@ body {
 .report-reason-textarea::placeholder {
   color: #AEAEB2;
 }
+
+/* --- Excel Download Button --- */
+.excel-download-container {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.excel-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #217346, #185C37);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(33, 115, 70, 0.3);
+}
+
+.excel-download-btn::before {
+  content: "\1F4CA";
+  font-size: 16px;
+}
+
+.excel-download-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(33, 115, 70, 0.4);
+}
+
+.excel-download-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.excel-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

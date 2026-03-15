@@ -4,7 +4,7 @@ import ImageUpload from './ImageUpload'
 import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Modal from './Modal';
@@ -33,6 +33,23 @@ function ChatInterface({ sessionId, onSessionCreated }) {
   // 라이트박스 상태
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // 엑셀 다운로드 중 상태 (메시지 인덱스별)
+  const [excelLoadingIdx, setExcelLoadingIdx] = useState(null);
+
+  // rehype-sanitize 커스텀 스키마: img 태그 허용 (data:image/ 만 허용)
+  const sanitizeSchema = {
+    ...defaultSchema,
+    tagNames: [...(defaultSchema.tagNames || []), 'img'],
+    attributes: {
+      ...defaultSchema.attributes,
+      img: ['src', 'alt', 'title', 'width', 'height']
+    },
+    protocols: {
+      ...defaultSchema.protocols,
+      src: ['data']
+    }
+  };
 
   useEffect(() => {
     isGeneratingRef.current = isGenerating;
@@ -313,6 +330,59 @@ function ChatInterface({ sessionId, onSessionCreated }) {
     }
   };
 
+  const hasRiskAssessmentTable = (content) => {
+    if (!content) return false;
+    const riskKeywords = ['위험도', '등급', '유해', '위험요인', '빈도', '강도', '개선대책', '공정', '작업'];
+    const lines = content.split('\n');
+    let headerLine = null;
+    let tableRowCount = 0;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        const cells = trimmed.slice(1, -1).split('|').map(c => c.trim());
+        if (cells.every(c => /^[-:]+$/.test(c))) continue;
+        if (headerLine === null) {
+          headerLine = trimmed;
+        }
+        tableRowCount++;
+      } else {
+        if (tableRowCount >= 3 && headerLine) {
+          if (riskKeywords.some(kw => headerLine.includes(kw))) return true;
+        }
+        headerLine = null;
+        tableRowCount = 0;
+      }
+    }
+    if (tableRowCount >= 3 && headerLine) {
+      if (riskKeywords.some(kw => headerLine.includes(kw))) return true;
+    }
+    return false;
+  };
+
+  const handleExcelDownload = async (content, msgIndex) => {
+    setExcelLoadingIdx(msgIndex);
+    try {
+      const blob = await chatAPI.exportExcel(content);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `위험성평가_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("엑셀 다운로드 실패:", error);
+      setAlertModal({
+        isOpen: true,
+        title: "다운로드 실패",
+        message: "엑셀 파일 생성에 실패했습니다.\n잠시 후 다시 시도해주세요."
+      });
+    } finally {
+      setExcelLoadingIdx(null);
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -500,7 +570,7 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                 
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkBreaks]}
-                  rehypePlugins={[rehypeSanitize]}
+                  rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
                   components={{
                     code({node, inline, className, children, ...props}) {
                       const match = /language-(\w+)/.exec(className || '')
@@ -521,16 +591,34 @@ function ChatInterface({ sessionId, onSessionCreated }) {
                     },
                     table({children}) {
                       return <table className="chat-table">{children}</table>
+                    },
+                    img({src, alt, title, width, height}) {
+                      if (!src || !src.startsWith('data:image/')) {
+                        return <span>{alt || ''}</span>;
+                      }
+                      return <img src={src} alt={alt || ''} title={title} width={width} height={height} style={{ maxWidth: '100%' }} />;
                     }
                   }}
                 > 
                   {msg.content || ''}
                 </ReactMarkdown>
 
+                {msg.role === 'assistant' && !isGenerating && hasRiskAssessmentTable(msg.content) && (
+                  <div className="excel-download-container" style={{ marginTop: '12px' }}>
+                    <button
+                      className="excel-download-btn"
+                      onClick={() => handleExcelDownload(msg.content, index)}
+                      disabled={excelLoadingIdx === index}
+                    >
+                      {excelLoadingIdx === index ? '생성 중...' : '엑셀로 다운로드'}
+                    </button>
+                  </div>
+                )}
+
                 {msg.role === 'assistant' && msg.id && (
                   <div className="message-actions" style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button 
-                      className="report-btn" 
+                    <button
+                      className="report-btn"
                       onClick={() => handleReportClick(msg.id, msg.report_status)}
                       style={{
                         background: msg.report_status === 'resolved' ? 'rgba(52, 199, 89, 0.1)' : (msg.report_status === 'pending' ? 'rgba(255, 59, 48, 0.1)' : 'none'),

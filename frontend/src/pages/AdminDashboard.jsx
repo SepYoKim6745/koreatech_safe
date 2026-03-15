@@ -626,6 +626,14 @@ const AdminDashboard = () => {
                                                                                   <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0, color: '#1d1d1f' }}>
                                                                                       {users.find(u => u.id === selectedUserId)?.username}
                                                                                   </h3>
+                                                                                  {users.find(u => u.id === selectedUserId)?.is_admin && (
+                                                                                    <span style={{ 
+                                                                                      fontSize: '10px', background: '#183072', color: 'white', 
+                                                                                      padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' 
+                                                                                    }}>
+                                                                                      Admin
+                                                                                    </span>
+                                                                                  )}
                                                                                   <button 
                                                                                     onClick={() => {
                                                                                       const u = users.find(u => u.id === selectedUserId);
